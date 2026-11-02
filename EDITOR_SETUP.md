@@ -9,6 +9,12 @@ and two passwords are configured. No default passwords are included in the code.
 
 ## One-time Vercel setup
 
+No Codex integration is needed for this option. Open
+[the Website project](https://vercel.com/kalpavruksha-clouds-projects/website)
+directly in Vercel. The website's `/admin` screen shows a configuration checklist
+and a **Check activation** button. Set the values inside Vercel; do not send
+passwords or tokens through chat.
+
 1. Open the **Website** project in Vercel. In **Storage**, create and connect a
    **private Vercel Blob store**. Connect it to the environment your team will use
    (normally Production). The integration supplies `BLOB_READ_WRITE_TOKEN`.

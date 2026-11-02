@@ -126,6 +126,8 @@ async function initialize() {
     const status = await api('status'); pageList = status.pages;
     const select = $('#page-select'); select.replaceChildren(); for (const page of pageList) { const option = node('option', '', `${page.path === '/' ? 'Home' : page.title} — ${page.path}`); option.value = page.path; select.append(option); }
     $('#setup-notice').hidden = status.configured; $('#login-controls').disabled = !status.configured;
+    $('#setup-storage-status').textContent = status.setup?.storageConfigured ? 'Storage setting present' : 'Storage setting missing';
+    $('#setup-password-status').textContent = status.setup?.passwordsConfigured ? 'Password settings ready' : 'Password settings missing or invalid';
     if (status.session && status.configured) { showStudio(status.session); await work(() => loadPage('/')); }
     else { $('#studio').hidden = true; $('#login-view').hidden = false; message(status.configured ? 'Use the team password to save drafts or the owner password to publish.' : 'Editing is protected until the owner completes the one-time activation.'); }
   } catch (error) { message(error.message, 'error'); $('#login-controls').disabled = true; }
@@ -135,6 +137,7 @@ $('#login-form').addEventListener('submit', async event => {
   try { const result = await api('login', { method: 'POST', body: { name, password } }); $('#editor-password').value = ''; const next = new URLSearchParams(location.search).get('next'); if (next && new URL(next, location.origin).origin === location.origin && new URL(next, location.origin).pathname === '/review') { location.assign(new URL(next, location.origin).href); return; } showStudio(result.session); await work(() => loadPage('/')); }
   catch (error) { message(error.message, 'error'); } finally { controls.disabled = false; }
 });
+$('#check-setup').addEventListener('click', async () => { const control = $('#check-setup'); control.disabled = true; try { await initialize(); } finally { control.disabled = false; } });
 $('#logout-button').addEventListener('click', () => work(async () => { if (!confirmLeave()) return; await api('logout', { method: 'POST', body: {} }); dirty = false; pageData = undefined; await initialize(); }));
 $('#page-select').addEventListener('change', event => { const path = event.target.value; if (!confirmLeave()) { event.target.value = pageData.path; return; } work(() => loadPage(path)); });
 document.querySelectorAll('[data-mode]').forEach(control => control.addEventListener('click', () => setMode(control.dataset.mode)));

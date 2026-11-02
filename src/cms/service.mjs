@@ -50,7 +50,7 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
     const store = suppliedStore === undefined ? makeStore(env) : suppliedStore;
     const ready = Boolean(store && credentialsReady(env)); const session = readSession(request, env, now());
     try {
-      if (request.method === 'GET' && op === 'status') return json({ configured: ready, session: session ? { name: session.name, role: session.role } : null, pages: editableTargets() });
+      if (request.method === 'GET' && op === 'status') return json({ configured: ready, setup: { storageConfigured: Boolean(store), passwordsConfigured: credentialsReady(env) }, session: session ? { name: session.name, role: session.role } : null, pages: editableTargets() });
       if (request.method === 'GET' && op === 'review' && (!ready || !session)) return new Response(null, { status: 303, headers: { ...headers, Location: `${url.origin}/admin?next=${encodeURIComponent('/review' + url.search)}` } });
       if (request.method === 'POST') requireOrigin(request);
       if (op === 'logout' && request.method === 'POST') return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', request, true) });
