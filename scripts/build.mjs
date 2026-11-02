@@ -13,9 +13,10 @@ await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 await cp(new URL('../public/', import.meta.url), out, { recursive: true });
 for (const path of Object.keys(pages)) {
-  const dir = new URL(path === '/' ? './' : `.${path}/`, out);
-  await mkdir(dir, { recursive: true });
-  await writeFile(new URL('index.html', dir), renderPage(path));
+  // Vercel cleanUrls maps /about to about.html, including nested page paths.
+  const pageFile = new URL(path === '/' ? 'index.html' : `${path.slice(1)}.html`, out);
+  await mkdir(new URL('./', pageFile), { recursive: true });
+  await writeFile(pageFile, renderPage(path));
 }
 await writeFile(new URL('404.html', out), renderNotFound());
 await writeFile(new URL('sitemap.xml', out), sitemap());

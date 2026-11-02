@@ -40,6 +40,7 @@ The supplied workspace was empty. There was no existing framework, router, Git r
 | `scripts/build.mjs` | Deterministic local static export and sitemap generation |
 | `tests/site.test.mjs` | Route, asset, metadata, validation, API and delivery failure checks |
 | `tests/interactions.test.mjs` | Scene selection, deferred media and accessible keyboard navigation |
+| `vercel.json` | Explicit static build, output directory, clean page URLs and response headers |
 
 ## Page architecture
 
@@ -80,6 +81,18 @@ The API requires same-origin JSON requests, bounds request bodies to 16 KiB, val
 
 ## Deployment
 
+### Vercel
+
+Connect `kalpavruksha-cloud/Website`, deploy the `main` branch and leave the Root Directory at the repository root. The committed `vercel.json` selects the Other framework preset, runs `npm run build` and publishes `dist`. Clean URLs map each route to its own generated HTML file: `/about` uses `dist/about.html`, and `/wealth/forex` uses `dist/wealth/forex.html`. This preserves genuine page content on direct visits and refreshes; unknown paths use `404.html`.
+
+If an earlier deployment showed a Vercel 404, deploy the latest commit. In Settings → Build and Deployment, verify the Root Directory is the repository root. The build command and output directory are defined in the repository configuration. Inspect deployment Build Logs if the build fails.
+
+Set `SITE_URL` to the approved public origin when available. Otherwise Vercel's production domain, or its deployment domain, supplies canonical and sitemap URLs automatically. Preview indexing remains disabled until `PUBLIC_SITE=true` is deliberately configured after review.
+
+This Vercel configuration publishes the static website. The persistent Node server and contact API are not deployed by this configuration, and the contact form stays disabled. Email delivery needs a separate Vercel Function integration or a Node hosting deployment when the verified delivery details are supplied.
+
+### Node server and publication review
+
 1. Apply approved branding and verify all business and legal content.
 2. Configure the actual origin, email delivery and anti-spam secrets.
 3. Run the checks and start the Node service behind HTTPS.
@@ -87,7 +100,7 @@ The API requires same-origin JSON requests, bounds request bodies to 16 KiB, val
 5. Perform desktop, mobile, keyboard and reduced-motion visual review.
 6. Set `PUBLIC_SITE=true` after launch review and restart/rebuild. This enables indexing and changes robots.txt. Do not publish the default localhost canonicals.
 
-No hosted deployment or external publication was performed. Browser UI verification was attempted but Computer Use ended because it could not confidently establish Chrome’s current URL. Automated checks cover routes and server behaviour; visual responsiveness and interaction verification still require a working browser session.
+The source is uploaded to GitHub. Vercel configuration is included for the user's connected deployment. Browser UI verification was attempted but Computer Use ended because it could not confidently establish Chrome’s current URL. Automated checks cover routes, the static deployment output and server behaviour; visual responsiveness and interaction verification still require a working browser session.
 
 ## Asset provenance
 

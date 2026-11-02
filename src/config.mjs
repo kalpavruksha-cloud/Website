@@ -9,7 +9,8 @@ try {
   }
 } catch (error) { if (error.code !== 'ENOENT') throw error; }
 
-const rawUrl = new URL(process.env.SITE_URL || 'http://localhost:3000');
+const deploymentHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+const rawUrl = new URL(process.env.SITE_URL || (deploymentHost ? `https://${deploymentHost}` : 'http://localhost:3000'));
 if (!['http:', 'https:'].includes(rawUrl.protocol)) throw new Error('SITE_URL must be an HTTP(S) URL');
 export const config = {
   port: Number(process.env.PORT || 3000),
