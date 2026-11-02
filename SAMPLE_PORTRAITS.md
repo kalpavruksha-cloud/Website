@@ -28,4 +28,3 @@ Use case: photorealistic-natural. Asset type: temporary corporate website portra
 ### Portrait 3
 
 Use case: photorealistic-natural. Asset type: temporary corporate website portrait, not a real employee or customer. Primary request: create one polished, natural studio photograph of a fictional Indian male business professional in his late forties, short salt-and-pepper hair, clean shaven, wearing a charcoal tailored jacket and simple ivory shirt. Subject faces camera with a relaxed approachable expression. Composition: portrait orientation, head and upper torso, entire head visible, generous space above head, centered. Scene: softly textured warm ivory studio backdrop. Lighting: soft window light, restrained editorial photography, natural skin texture. Palette charcoal, ivory, subtle warm gold. No words, logos, badges, frames or watermarks. Do not depict a recognizable real person.
-
