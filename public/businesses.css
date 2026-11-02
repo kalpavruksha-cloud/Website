@@ -1,0 +1,33 @@
+/* Supplied company artwork stays intact, in its original colours and proportions. */
+.business-logo{display:inline-block;flex-shrink:0;background:#fff;border:1px solid #ffffff65;padding:7px;line-height:0;overflow:hidden}
+.business-logo>img{display:block;width:100%;height:100%;aspect-ratio:1;object-fit:contain;filter:none;transform:none}
+.company-identity-gallery{padding:35px var(--gutter) 45px;background:var(--paper);border-bottom:1px solid var(--line)}
+.company-logo-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-left:1px solid var(--line)}
+.company-logo-card{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;padding:24px 20px 20px;border-right:1px solid var(--line);transition:background .3s}
+.company-logo-card:hover{background:var(--white)}
+.company-logo-number{position:absolute;top:0;left:16px;font-size:9px;color:var(--gold-text);letter-spacing:.1em}
+.gallery-business-logo{width:125px;height:125px;max-width:100%;padding:8px;margin-bottom:17px;box-shadow:0 5px 25px #00000004}
+.company-logo-name{font-family:var(--serif);font-size:19px;line-height:1.25;max-width:200px;color:var(--ink)}
+.company-logo-focus{font-size:8px;line-height:1.7;color:var(--muted);margin-top:10px;max-width:160px}
+.dropdown a.business-nav-link{display:flex;align-items:center;gap:13px;padding:9px 0;line-height:1.5}
+.nav-business-logo{width:39px;height:39px;padding:3px;border-color:var(--line)}
+.business-grid .business-card-logo{position:absolute;top:24px;left:26px;width:94px;height:94px;z-index:2;box-shadow:0 8px 25px #00000015}
+.business-grid .business-card-logo>img,.business-grid .business-card:hover .business-card-logo>img{object-fit:contain;filter:none;transform:none}
+.business-grid .business-index{left:137px;top:29px}
+.scene-business-logo{width:78px;height:78px;margin-bottom:18px;padding:6px;box-shadow:0 8px 25px #00000015}
+.page-business-identity{display:flex;align-items:center;gap:23px;margin-bottom:3px}
+.page-business-identity>.eyebrow{max-width:340px}
+.page-business-logo{width:82px;height:82px;padding:6px;box-shadow:0 8px 30px #00000010}
+.spotlight-brand-heading{display:flex;align-items:center;gap:22px}
+.spotlight-brand-heading>.eyebrow{max-width:230px}
+.spotlight-business-logo{width:78px;height:78px;padding:6px;box-shadow:0 8px 25px #00000008}
+.signature-property .property-overline{display:flex;align-items:center;gap:23px;max-width:calc(100% - 2 * var(--gutter))}
+.signature-property .property-overline>.eyebrow{color:var(--gold-soft);font-size:9px}
+.property-business-logo{width:86px;height:86px;padding:6px;box-shadow:0 8px 25px #00000015}
+.footer-links a.footer-business-link{display:flex;align-items:center;gap:11px;padding:7px 0}
+.footer-business-logo{width:36px;height:36px;padding:3px}
+.footer-business-link>span:last-child{line-height:1.55}
+@media(max-width:1150px){.gallery-business-logo{width:110px;height:110px}.company-logo-card{padding-left:14px;padding-right:14px}.company-logo-name{font-size:18px}.scene-business-logo{width:68px;height:68px}.scene-tabs{gap:13px}.scene-tabs>button{font-size:9px;gap:9px}}
+@media(max-width:900px){.company-identity-gallery{padding-top:30px;padding-bottom:35px}.company-logo-card{padding:25px 10px 14px}.gallery-business-logo{width:92px;height:92px;margin-bottom:15px;padding:6px}.company-logo-name{font-size:15px}.company-logo-focus{font-size:7px}.scene-business-logo{width:65px;height:65px;margin-bottom:14px}.scene-tabs>button{font-size:8px;gap:7px}.business-grid .business-card-logo{width:78px;height:78px;top:22px;left:20px;padding:6px}.business-grid .business-index{left:112px;top:26px}.page-business-logo{width:74px;height:74px}.page-business-identity{gap:18px}.spotlight-brand-heading{gap:17px}.spotlight-business-logo{width:65px;height:65px}.spotlight-brand-heading>.eyebrow{font-size:7px}.property-business-logo{width:74px;height:74px}.signature-property .property-overline>.eyebrow{font-size:8px}.footer-business-logo{width:34px;height:34px}.footer-links a.footer-business-link{gap:9px}}
+@media(max-width:600px){.company-identity-gallery{padding:30px 24px 35px}.company-logo-grid{grid-template-columns:1fr 1fr;border-left:0;gap:15px}.company-logo-card{border:1px solid var(--line);padding:30px 12px 20px;background:var(--white)}.company-logo-number{top:9px;left:12px;font-size:8px}.gallery-business-logo{width:105px;height:105px;padding:6px;margin-bottom:14px}.company-logo-name{font-size:18px;max-width:170px}.company-logo-focus{font-size:7px;max-width:150px;margin-top:9px}.company-logo-card:last-child{grid-column:1/-1;display:grid;grid-template-columns:120px 1fr;text-align:left;gap:7px 18px;align-items:center;padding:25px 20px}.company-logo-card:last-child .gallery-business-logo{grid-row:1/3;margin:0}.company-logo-card:last-child .company-logo-name{align-self:end}.company-logo-card:last-child .company-logo-focus{align-self:start;margin-top:0}.business-grid .business-card-logo{width:88px;height:88px;top:24px;left:26px}.business-grid .business-index{left:128px;top:29px}.hero-business-preview .scene-pagination{display:none}.scene-panel{position:relative;padding-left:85px;min-height:77px}.scene-business-logo{position:absolute;left:0;top:0;width:68px;height:68px;padding:5px;margin:0}.scene-panel>.eyebrow{font-size:6px;max-width:220px}.scene-panel .scene-title{font-size:25px;line-height:1.1;margin-top:10px;max-width:240px;gap:14px}.scene-panel .scene-title>span{font-size:18px}.scene-tabs>button{font-size:7px;line-height:1.4;gap:10px}.page-business-identity{gap:17px;margin-bottom:2px}.page-business-logo{width:66px;height:66px;padding:5px}.page-business-identity>.eyebrow{font-size:7px;max-width:220px}.spotlight-business-logo{width:68px;height:68px;padding:5px}.spotlight-brand-heading{gap:17px}.spotlight-brand-heading>.eyebrow{font-size:7px}.property-business-logo{width:70px;height:70px;padding:5px}.signature-property .property-overline{gap:18px;top:30px}.signature-property .property-overline>.eyebrow{font-size:7px;max-width:180px}.footer-business-logo{width:31px;height:31px;padding:2px}.footer-links a.footer-business-link{gap:8px}.nav-business-logo{width:40px;height:40px}}
+@media(max-width:360px){.company-logo-grid{gap:11px}.gallery-business-logo{width:95px;height:95px}.company-logo-name{font-size:16px}.company-logo-card:last-child{grid-template-columns:100px 1fr;padding:25px 14px;gap:7px 12px}.scene-panel{padding-left:75px}.scene-business-logo{width:60px;height:60px}.scene-panel .scene-title{font-size:22px}.scene-tabs>button{font-size:6px}.footer-links a.footer-business-link{gap:6px}.footer-business-logo{width:27px;height:27px}}

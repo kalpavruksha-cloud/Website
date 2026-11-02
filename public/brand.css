@@ -1,0 +1,26 @@
+/* Official artwork is shown intact. Only transparent outer padding is clipped. */
+.official-wordmark{line-height:1;letter-spacing:normal}
+.wordmark.official-wordmark>.logo-frame{display:block;position:relative;width:160px;aspect-ratio:418/224;overflow:hidden;font-size:inherit;line-height:1}
+.logo-frame>img{position:absolute;width:119.617225%;height:auto;max-width:none;max-height:none;left:-2.392344%;top:-54.910714%;object-fit:contain}
+.site-header{background:var(--deep);color:var(--paper);border-bottom-color:color-mix(in srgb,var(--gold) 24%,transparent)}
+.site-header .nav-contact{border-color:color-mix(in srgb,var(--gold) 50%,transparent)}
+.site-header .nav-contact:hover{background:var(--gold);color:var(--deep)}
+.site-header a[aria-current=page],.site-header .nav-group>summary.active{color:var(--gold)}
+.site-header .dropdown{color:var(--ink)}
+.site-header .dropdown a[aria-current=page]{color:var(--gold-text)}
+.site-header .menu-toggle i{border-color:var(--gold)}
+.site-footer .wordmark.official-wordmark>.logo-frame{width:220px}
+.eyebrow{color:var(--gold-text)}
+.home-hero .eyebrow,.wealth-spotlight .eyebrow,.market-hero .eyebrow,.market-visual .eyebrow,.office .eyebrow,.closing-section .eyebrow,.site-footer .eyebrow{color:var(--gold)}
+.hero-content h1 em,.closing-section h2 em{color:var(--gold)}
+.tree-rings em,.business-copy>.eyebrow,.value-num,.value-plus,.category-row .item-number,.category-row>.arrow,.content-card .item-number{color:var(--gold-text)}
+@media(max-width:900px){
+  .wordmark.official-wordmark>.logo-frame{width:132px}
+  .site-header #main-nav{color:var(--ink)}
+  .site-header #main-nav>a[aria-current=page],.site-header #main-nav .nav-group>summary.active{color:var(--gold-text)}
+  .site-header #main-nav .nav-contact{border-color:var(--gold-text)}
+}
+@media(max-width:600px){
+  .wordmark.official-wordmark>.logo-frame{width:122px}
+  .site-footer .wordmark.official-wordmark>.logo-frame{width:200px}
+}
