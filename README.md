@@ -1,12 +1,13 @@
 # Kalpavruksha corporate website
 
-A 23-page, server-rendered corporate website with a static export, responsive editorial layouts, local illustrative imagery, keyboard-accessible menus, reduced-motion support, educational market charts, topic filters and a validated enquiry endpoint.
+A 26-page corporate website with a cinematic homepage, direct Gallery / Testimonials / Our Team navigation, editable page content, shared drafts, owner publishing, image uploads and version history. It preserves the supplied logos and business order.
 
 ## Run locally
 
-Requires Node.js 22 or later. There are no third-party runtime dependencies.
+Requires Node.js 22 or later. Install the locked dependencies first.
 
 ```powershell
+npm ci
 npm run dev
 ```
 
@@ -18,7 +19,7 @@ npm test
 npm run build
 ```
 
-`dist/` contains pre-rendered HTML for every route. The Node server renders the same templates and supplies `/api/contact`. A static-only deployment **does not enable enquiry delivery**. Use the Node server for the full application.
+`npm run build` creates pre-rendered HTML for standalone static hosting. On Vercel (`VERCEL=1`), the build emits assets, the admin interface and a 404 page; known public routes are rendered by `/api/site` so published changes appear immediately. Existing static page files would take precedence over Vercel rewrites, so they are deliberately omitted in that environment. The Node server supports the same content service locally and supplies `/api/contact`. Contact delivery remains disabled on Vercel pending a separate email Function integration.
 
 ## Initial audit and implementation map
 
@@ -40,17 +41,25 @@ The supplied workspace was empty. There was no existing framework, router, Git r
 | `scripts/build.mjs` | Deterministic local static export and sitemap generation |
 | `tests/site.test.mjs` | Route, asset, metadata, validation, API and delivery failure checks |
 | `tests/interactions.test.mjs` | Scene selection, deferred media and accessible keyboard navigation |
-| `vercel.json` | Explicit static build, output directory, clean page URLs and response headers |
+| `src/collections.mjs`, `src/community.mjs` | Gallery, team and testimonials content, public sections and homepage previews |
+| `src/cms/` | Signed sessions, private storage, validation, shared drafts, publishing, image access and history |
+| `api/cms.mjs`, `api/site.mjs` | Vercel Web Handler functions for editing and public page rendering |
+| `public/editor.*`, `public/admin.html` | Protected editing workspace and responsive visual preview |
+| `public/community.css`, `public/gallery.js` | Collection layouts, business filters and keyboard-accessible image viewer |
+| `tests/cms.test.mjs` | Draft/public separation, roles, concurrency, media privacy, sessions and persistent storage |
+| `vercel.json` | Known-route Function rewrites, clean URLs, assets and response headers |
 
 ## Page architecture
 
-- Corporate: `/`, `/about`, `/vision`, `/businesses`, `/leadership`, `/corporate-office`.
+- Corporate: `/`, `/about`, `/vision`, `/businesses`, `/leadership`, `/team`, `/corporate-office`.
+- Community: `/gallery`, `/testimonials`.
+- Editor: `/admin` (not included in the public sitemap).
 - Wealth: `/wealth`, `/wealth/indian-markets`, `/wealth/forex`, `/wealth/market-insights`, `/wealth/financial-awareness`.
 - Property: `/real-estate`, `/real-estate/properties`, `/real-estate/development`, `/real-estate/projects`.
 - Other businesses: `/businesses/kv-constructions`, `/businesses/rudraksh-enterprises`, `/businesses/brindavan-resto`.
 - Information: `/contact`, `/faq`, `/privacy-policy`, `/terms`, `/disclaimer`.
 
-Navigation groups the routes into Company, Businesses and Perspectives. Each route has a unique title, description, canonical URL, one h1, semantic content and internal links. The sitemap includes all 23 pages. Preview indexing is disabled by default.
+Main navigation exposes Gallery, Testimonials and Our Team directly alongside Company and Businesses. A shortcut strip below the homepage hero and dedicated homepage previews make the new sections visible. Each route has a unique title, description, canonical URL, one h1, semantic content and internal links. The sitemap includes all 26 public pages. Preview indexing is disabled by default.
 
 ## Brand assets and publication review
 
@@ -83,13 +92,15 @@ The API requires same-origin JSON requests, bounds request bodies to 16 KiB, val
 
 ### Vercel
 
-Connect `kalpavruksha-cloud/Website`, deploy the `main` branch and leave the Root Directory at the repository root. The committed `vercel.json` selects the Other framework preset, runs `npm run build` and publishes `dist`. Clean URLs map each route to its own generated HTML file: `/about` uses `dist/about.html`, and `/wealth/forex` uses `dist/wealth/forex.html`. This preserves genuine page content on direct visits and refreshes; unknown paths use `404.html`.
+Connect `kalpavruksha-cloud/Website`, deploy the `main` branch and keep Root Directory at the repository root. The committed configuration runs `npm run build`, publishes assets from `dist` and routes each known public page to `api/site.mjs`. The editor uses `api/cms.mjs`. Unknown paths receive the generated 404 page. Functions use Node.js and the Web Standard fetch export.
 
-If an earlier deployment showed a Vercel 404, deploy the latest commit. In Settings → Build and Deployment, verify the Root Directory is the repository root. The build command and output directory are defined in the repository configuration. Inspect deployment Build Logs if the build fails.
+To activate shared editing, follow **[EDITOR_SETUP.md](EDITOR_SETUP.md)**: connect a **private Vercel Blob store**, set separate `CMS_EDITOR_PASSWORD` and `CMS_OWNER_PASSWORD` values, and redeploy. Without these settings the website loads its original content and the editor stays locked. After configuration, signed-in teammates can save shared drafts; only the owner can publish or restore. Editing does not require Git commits or rebuilding the site. Private uploads and content survive deployments in the Blob store.
 
-Set `SITE_URL` to the approved public origin when available. Otherwise Vercel's production domain, or its deployment domain, supplies canonical and sitemap URLs automatically. Preview indexing remains disabled until `PUBLIC_SITE=true` is deliberately configured after review.
+Set `SITE_URL` to the approved public origin when available. Otherwise Vercel's production or deployment domain supplies canonical and sitemap URLs. Keep `PUBLIC_SITE=false` until final review. Shared content depends on the configured store; if the store cannot be read, a 503 response is returned rather than substituting old default content.
 
-This Vercel configuration publishes the static website. The persistent Node server and contact API are not deployed by this configuration, and the contact form stays disabled. Email delivery needs a separate Vercel Function integration or a Node hosting deployment when the verified delivery details are supplied.
+The editor covers page content, search metadata, page images and three collections. Header/footer structure, navigation destinations and business relationships are maintained in source code. Empty testimonials and team sections invite contact; no invented profiles or quotes are included. Genuine records appear after entry, permission, review and owner publication.
+
+The contact endpoint is currently supplied by the local/Node server. Enquiry delivery on Vercel still needs the verified email details and a separate Function integration.
 
 ### Node server and publication review
 
@@ -100,7 +111,7 @@ This Vercel configuration publishes the static website. The persistent Node serv
 5. Perform desktop, mobile, keyboard and reduced-motion visual review.
 6. Set `PUBLIC_SITE=true` after launch review and restart/rebuild. This enables indexing and changes robots.txt. Do not publish the default localhost canonicals.
 
-The source is uploaded to GitHub. Vercel configuration is included for the user's connected deployment. Browser UI verification was attempted but Computer Use ended because it could not confidently establish Chrome’s current URL. Automated checks cover routes, the static deployment output and server behaviour; visual responsiveness and interaction verification still require a working browser session.
+The source is uploaded to GitHub. Vercel configuration is included for the user's connected deployment. Browser UI verification was attempted but Computer Use ended because it could not confidently establish Chrome’s current URL. Automated checks cover routes, both build modes, editing, media access, sessions, draft/publish separation and server behaviour. Browser automation remains unavailable in this environment; visual responsiveness still needs a manual review in the local preview.
 
 ## Asset provenance
 

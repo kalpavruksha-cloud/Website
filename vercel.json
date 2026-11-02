@@ -9,10 +9,130 @@
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        }
       ]
+    }
+  ],
+  "functions": {
+    "api/*.mjs": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/team",
+      "destination": "/api/site?path=%2Fteam"
+    },
+    {
+      "source": "/gallery",
+      "destination": "/api/site?path=%2Fgallery"
+    },
+    {
+      "source": "/testimonials",
+      "destination": "/api/site?path=%2Ftestimonials"
+    },
+    {
+      "source": "/",
+      "destination": "/api/site?path=%2F"
+    },
+    {
+      "source": "/about",
+      "destination": "/api/site?path=%2Fabout"
+    },
+    {
+      "source": "/vision",
+      "destination": "/api/site?path=%2Fvision"
+    },
+    {
+      "source": "/businesses",
+      "destination": "/api/site?path=%2Fbusinesses"
+    },
+    {
+      "source": "/leadership",
+      "destination": "/api/site?path=%2Fleadership"
+    },
+    {
+      "source": "/corporate-office",
+      "destination": "/api/site?path=%2Fcorporate-office"
+    },
+    {
+      "source": "/wealth",
+      "destination": "/api/site?path=%2Fwealth"
+    },
+    {
+      "source": "/wealth/indian-markets",
+      "destination": "/api/site?path=%2Fwealth%2Findian-markets"
+    },
+    {
+      "source": "/wealth/forex",
+      "destination": "/api/site?path=%2Fwealth%2Fforex"
+    },
+    {
+      "source": "/wealth/market-insights",
+      "destination": "/api/site?path=%2Fwealth%2Fmarket-insights"
+    },
+    {
+      "source": "/wealth/financial-awareness",
+      "destination": "/api/site?path=%2Fwealth%2Ffinancial-awareness"
+    },
+    {
+      "source": "/real-estate",
+      "destination": "/api/site?path=%2Freal-estate"
+    },
+    {
+      "source": "/real-estate/properties",
+      "destination": "/api/site?path=%2Freal-estate%2Fproperties"
+    },
+    {
+      "source": "/real-estate/development",
+      "destination": "/api/site?path=%2Freal-estate%2Fdevelopment"
+    },
+    {
+      "source": "/real-estate/projects",
+      "destination": "/api/site?path=%2Freal-estate%2Fprojects"
+    },
+    {
+      "source": "/businesses/kv-constructions",
+      "destination": "/api/site?path=%2Fbusinesses%2Fkv-constructions"
+    },
+    {
+      "source": "/businesses/rudraksh-enterprises",
+      "destination": "/api/site?path=%2Fbusinesses%2Frudraksh-enterprises"
+    },
+    {
+      "source": "/businesses/brindavan-resto",
+      "destination": "/api/site?path=%2Fbusinesses%2Fbrindavan-resto"
+    },
+    {
+      "source": "/contact",
+      "destination": "/api/site?path=%2Fcontact"
+    },
+    {
+      "source": "/faq",
+      "destination": "/api/site?path=%2Ffaq"
+    },
+    {
+      "source": "/privacy-policy",
+      "destination": "/api/site?path=%2Fprivacy-policy"
+    },
+    {
+      "source": "/terms",
+      "destination": "/api/site?path=%2Fterms"
+    },
+    {
+      "source": "/disclaimer",
+      "destination": "/api/site?path=%2Fdisclaimer"
     }
   ]
 }

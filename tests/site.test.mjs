@@ -9,8 +9,8 @@ import { config } from '../src/config.mjs';
 
 const valid = { fullName: 'Test Visitor', mobile: '+91 99999 99999', email: 'visitor@example.com', business: 'General Business Enquiry', message: 'Please share information about the corporate office.', consent: true };
 
-test('all 23 routes have unique metadata, one h1, valid links and available images', async () => {
-  assert.equal(Object.keys(pages).length, 23);
+test('all 26 routes have unique metadata, one h1, valid links and available images', async () => {
+  assert.equal(Object.keys(pages).length, 26);
   const titles = new Set(); const descriptions = new Set();
   for (const [path, page] of Object.entries(pages)) {
     const html = renderPage(path);
@@ -24,7 +24,8 @@ test('all 23 routes have unique metadata, one h1, valid links and available imag
     assert.ok(!descriptions.has(page.description), `duplicate description ${path}`); descriptions.add(page.description);
     for (const [, href] of html.matchAll(/href="(\/[^"]*)"/g)) {
       const target = href.split(/[?#]/)[0];
-      if (/\.(css|svg|jpg|png)$/.test(target)) await access(new URL(`../public${target}`, import.meta.url));
+      if (target === '/admin') await access(new URL('../public/admin.html', import.meta.url));
+      else if (/\.(css|svg|jpg|png)$/.test(target)) await access(new URL(`../public${target}`, import.meta.url));
       else assert.ok(pages[target], `${path} links to missing route ${target}`);
     }
     for (const [, src] of html.matchAll(/src="(\/assets\/[^"]+)"/g)) await access(new URL(`../public${src}`, import.meta.url));

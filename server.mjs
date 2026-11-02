@@ -6,6 +6,10 @@ import { config } from './src/config.mjs';
 import { pages } from './src/content.mjs';
 import { renderPage, renderNotFound } from './src/render.mjs';
 import { contactAvailable, validateEnquiry, createRateLimiter, deliverEnquiry } from './src/contact.mjs';
+import { cmsHandler } from './src/cms/service.mjs';
+import { siteHandler } from './src/cms/site.mjs';
+import { makeStore } from './src/cms/storage.mjs';
+import { handleWebRequest } from './src/cms/node-adapter.mjs';
 
 const publicDir = resolve(fileURLToPath(new URL('./public/', import.meta.url)));
 const types = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.png': 'image/png' };
@@ -29,6 +33,15 @@ export function createApp({ deliver = deliverEnquiry, limiter = createRateLimite
     let path;
     try { path = decodeURIComponent(new URL(request.url, config.origin).pathname); }
     catch { send(400, 'Invalid request', 'text/plain'); return; }
+    if (path === '/api/cms') {
+      try { await handleWebRequest(request, response, cmsHandler); } catch { if (!response.headersSent) json(500, { error: 'The editor service could not process this request.' }); }
+      return;
+    }
+    if (path === '/admin' || path === '/admin/') {
+      if (!['GET', 'HEAD'].includes(request.method)) { send(405, 'Method not allowed', 'text/plain', { Allow: 'GET, HEAD' }); return; }
+      send(200, await readFile(resolve(publicDir, 'admin.html')), undefined, { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" }); return;
+    }
+    if (pages[path] && makeStore()) { await handleWebRequest(request, response, req => siteHandler(req)); return; }
     if (path === '/api/contact' && request.method === 'POST') {
       if (request.headers.origin !== config.origin) { json(403, { error: 'The enquiry must be sent from this website.' }); return; }
       if (!request.headers['content-type']?.startsWith('application/json')) { json(415, { error: 'Please use the website enquiry form.' }); return; }

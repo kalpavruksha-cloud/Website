@@ -1,6 +1,6 @@
 import { businesses } from './content.mjs';
 
-export function renderHome({ image, button, intro, businessCards, marketChart, valueList, closing, wordmark, businessLogo }) {
+export function renderHome({ image, button, intro, businessCards, marketChart, valueList, community, closing, wordmark, businessLogo }) {
   const wealth = businesses.find(b => b.route === '/wealth');
   const construction = businesses.find(b => b.route === '/businesses/kv-constructions');
   const property = businesses.find(b => b.route === '/real-estate');
@@ -21,6 +21,8 @@ export function renderHome({ image, button, intro, businessCards, marketChart, v
     <span class="hero-image-label">Illustrative imagery · Not company facilities or projects</span>
   </section>
 
+  <nav class="home-section-nav" aria-label="Explore the website"><span>Discover Kalpavruksha</span><a href="/gallery">Gallery <span aria-hidden="true">&#8599;</span></a><a href="/#testimonials">Testimonials <span aria-hidden="true">&#8595;</span></a><a href="/team">Our Team <span aria-hidden="true">&#8599;</span></a><a href="/corporate-office">Corporate Office <span aria-hidden="true">&#8599;</span></a></nav>
+
   <section class="identity-strip" aria-label="Our business perspective"><span class="eyebrow">The Kalpavruksha perspective</span><p>One vision. <em>Multiple opportunities.</em></p><a href="/businesses" aria-label="Discover all five business identities"><span>05</span><span>Distinct identities.<br>Connected possibilities.</span><i aria-hidden="true">↗</i></a></section>
 
   <section class="company-identity-gallery" aria-label="Our business identities"><div class="company-logo-grid">${businesses.map(b => `<a class="company-logo-card" href="${b.route}"><span class="company-logo-number">${b.id}</span>${businessLogo(b, 'gallery-business-logo', true)}<span class="company-logo-name">${b.name}</span><span class="company-logo-focus">${b.label}</span></a>`).join('')}</div></section>
@@ -38,5 +40,5 @@ export function renderHome({ image, button, intro, businessCards, marketChart, v
 
   <section class="section philosophy-section signature-philosophy"><div class="philosophy-intro reveal"><span class="eyebrow">06 / The principles beneath possibility</span><h2>What we<br><em>stand for.</em></h2><div class="principle-symbol" aria-hidden="true"><span></span><span></span><span></span><i>∞</i></div><p>Businesses grow.<br>Our foundations stay grounded.</p></div>${valueList()}</section>
 
-  <section class="section office-section signature-office"><div class="reveal"><span class="eyebrow">07 / Our corporate presence</span><h2>A space for vision.<br><em>A place for connection.</em></h2><p>Our new corporate office in Bidar reflects a continuing commitment to organized operations, professional engagement and stronger business relationships.</p>${button('Discover our corporate office', '/corporate-office', 'button-text')}</div><div class="office-date reveal"><span class="eyebrow">Bidar, Karnataka / Planned office opening</span><strong>15<span>November 2026</span></strong><div class="office-date-rule"></div><span class="small-note">A new office milestone.<br>A continuing business journey.</span></div></section>${closing()}`;
+  <section class="section office-section signature-office"><div class="reveal"><span class="eyebrow">07 / Our corporate presence</span><h2>A space for vision.<br><em>A place for connection.</em></h2><p>Our new corporate office in Bidar reflects a continuing commitment to organized operations, professional engagement and stronger business relationships.</p>${button('Discover our corporate office', '/corporate-office', 'button-text')}</div><div class="office-date reveal"><span class="eyebrow">Bidar, Karnataka / Planned office opening</span><strong>15<span>November 2026</span></strong><div class="office-date-rule"></div><span class="small-note">A new office milestone.<br>A continuing business journey.</span></div></section>${community()}${closing()}`;
 }

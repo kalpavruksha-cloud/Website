@@ -1,0 +1,5 @@
+[data-cms-preview] [data-cms-key]{cursor:pointer;transition:outline-color .15s;outline:1px solid transparent;outline-offset:4px}
+[data-cms-preview] [data-cms-key]:hover{outline-color:#fbb634;background-color:#fbb63412}
+[data-cms-preview] [data-cms-key].cms-selected{outline:2px solid #fbb634;outline-offset:5px;background-color:#fbb63416}
+[data-cms-preview] img.cms-selected{outline-offset:-3px}
+[data-cms-preview] .reveal{opacity:1!important;transform:none!important}
