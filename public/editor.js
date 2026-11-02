@@ -1,6 +1,6 @@
 const $ = selector => document.querySelector(selector);
 const frame = $('#page-preview');
-let session, pageData, selectedKey, mode = 'text', dirty = false, busy = false, pageList = [];
+let session, pageData, selectedKey, pendingFocus, mode = 'text', dirty = false, busy = false, pageList = [];
 function node(tag, className, text) { const element = document.createElement(tag); if (className) element.className = className; if (text !== undefined) element.textContent = text; return element; }
 function button(text, action) { const element = node('button', '', text); element.type = 'button'; element.addEventListener('click', action); return element; }
 function message(text, kind = '') { const target = $('#studio').hidden ? $('#login-status') : $('#studio-status'); target.textContent = text; target.className = kind; }
@@ -44,7 +44,7 @@ function chooseField(key, focus = true) {
 }
 function fieldList() {
   const select = $('#field-select'); const query = $('#field-search').value.toLowerCase(); select.replaceChildren();
-  const matches = pageData.catalog.filter(field => (mode === 'image' ? field.type === 'image' : field.type !== 'image') && `${field.label} ${field.original}`.toLowerCase().includes(query));
+  const matches = pageData.catalog.filter(field => !field.siteKey && (mode === 'image' ? field.type === 'image' : field.type !== 'image') && `${field.label} ${field.original}`.toLowerCase().includes(query));
   for (const field of matches) { const option = node('option', '', `${field.label} — ${field.original.replace(/\s+/g, ' ').slice(0, 90)}`); option.value = field.key; select.append(option); }
   const key = matches.some(field => field.key === selectedKey) ? selectedKey : matches[0]?.key;
   if (key) chooseField(key, false); else $('#field-editor').replaceChildren(node('p', 'field-help', 'No matching fields. Try a different search.'));
@@ -107,7 +107,8 @@ function renderCollection() {
 }
 async function loadPage(path) {
   pageData = { path }; const data = await api('page'); pageData = data; dirty = false; $('#change-note').value = ''; $('#page-select').value = path;
-  $('#preview-path').textContent = path; $('#live-page-link').href = path; $('#collection-mode').hidden = !['/gallery', '/testimonials', '/team'].includes(path);
+  $('#preview-path').textContent = path === '/_site' ? 'Site-wide content' : path; $('#live-page-link').href = path === '/_site' ? '/' : path; $('#collection-mode').hidden = !['/gallery', '/testimonials', '/team'].includes(path);
+  $('#review-page-link').href = `/review?page=${encodeURIComponent(path === '/_site' ? '/' : path)}`;
   $('#draft-state').textContent = data.revision ? data.revision === data.publishedRevision ? 'Published · draft in sync' : 'Shared draft' : 'Original content';
   $('#field-search').value = ''; setMode(mode === 'collection' && $('#collection-mode').hidden ? 'text' : mode);
   frame.removeAttribute('srcdoc'); frame.src = `/api/cms?op=preview&page=${encodeURIComponent(path)}&v=${Date.now()}`;
@@ -118,6 +119,7 @@ function showStudio(nextSession) {
   session = nextSession; $('#login-view').hidden = true; $('#studio').hidden = false;
   $('#session-name').textContent = session.name; $('#session-role').textContent = session.role;
   $('#publish-button').hidden = session.role !== 'owner'; $('#history-button').hidden = session.role !== 'owner';
+  $('#publish-all-button').hidden = session.role !== 'owner';
 }
 async function initialize() {
   try {
@@ -130,7 +132,7 @@ async function initialize() {
 }
 $('#login-form').addEventListener('submit', async event => {
   event.preventDefault(); const controls = $('#login-controls'); const name = $('#editor-name').value; const password = $('#editor-password').value; controls.disabled = true;
-  try { const result = await api('login', { method: 'POST', body: { name, password } }); $('#editor-password').value = ''; showStudio(result.session); await work(() => loadPage('/')); }
+  try { const result = await api('login', { method: 'POST', body: { name, password } }); $('#editor-password').value = ''; const next = new URLSearchParams(location.search).get('next'); if (next && new URL(next, location.origin).origin === location.origin && new URL(next, location.origin).pathname === '/review') { location.assign(new URL(next, location.origin).href); return; } showStudio(result.session); await work(() => loadPage('/')); }
   catch (error) { message(error.message, 'error'); } finally { controls.disabled = false; }
 });
 $('#logout-button').addEventListener('click', () => work(async () => { if (!confirmLeave()) return; await api('logout', { method: 'POST', body: {} }); dirty = false; pageData = undefined; await initialize(); }));
@@ -140,6 +142,14 @@ $('#field-search').addEventListener('input', fieldList); $('#field-select').addE
 $('#save-button').addEventListener('click', () => work(async () => { message('Saving the shared draft…'); const path = pageData.path; await api('save', { method: 'POST', body: payload() }); await loadPage(path); message('Shared draft saved. Teammates can now review it. The published page is unchanged.', 'success'); }));
 $('#refresh-preview').addEventListener('click', () => work(async () => { message('Preparing the preview…'); const html = await api('render', { method: 'POST', body: payload() }); frame.srcdoc = html; message('Preview updated with your browser changes. Save the shared draft to keep them.'); }));
 $('#publish-button').addEventListener('click', () => work(async () => { if (dirty) throw new Error('Save your shared draft before publishing.'); if (!confirm('Publish the latest saved draft of this page to the website?')) return; const path = pageData.path; await api('publish', { method: 'POST', body: { baseRevision: pageData.revision } }); await loadPage(path); message('Published. Open the published page to review the result.', 'success'); }));
+$('#publish-all-button').addEventListener('click', () => work(async () => {
+  if (dirty) throw new Error('Save your browser changes before publishing the reviewed website.');
+  const { pending } = await api('overview');
+  if (!pending.length) { message('All saved drafts are already published.'); return; }
+  if (!confirm(`Publish the ${pending.length} saved drafts listed below? Review them using Review saved website first.\n\n${pending.map(page => page.title + ' — ' + page.path).join('\n')}`)) return;
+  const result = await api('publish-all', { method: 'POST', body: { revisions: Object.fromEntries(pending.map(page => [page.path, page.revision])) } });
+  await loadPage(pageData.path); message(`Published ${result.count} saved drafts together. The reviewed website is now updated.`, 'success');
+}));
 $('#download-button').addEventListener('click', () => { const blob = new Blob([JSON.stringify({ page: pageData.path, ...payload() }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = node('a'); link.href = url; link.download = `kalpavruksha-${pageData.path.replaceAll('/', '-') || 'home'}-draft.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); message('A draft backup was downloaded. Save the shared draft to share changes with the team.'); });
 $('#add-entry').addEventListener('click', () => { pageData.items ||= []; if (pageData.items.length >= (pageData.path === '/gallery' ? 40 : 25)) { message('This collection has reached its entry limit.', 'error'); return; } pageData.items.push(pageData.path === '/gallery' ? { id: crypto.randomUUID(), title: '', src: '', alt: '', caption: '', category: 'Wealth', illustrative: true } : pageData.path === '/team' ? { id: crypto.randomUUID(), name: '', role: '', business: '', bio: '', src: '', alt: '', sample: false, consent: false, approved: false } : { id: crypto.randomUUID(), name: '', role: '', business: '', quote: '', src: '', alt: '', sample: false, consent: false, approved: false }); changed(); renderCollection(); });
 $('#history-button').addEventListener('click', () => { const root = $('#history-list'); root.replaceChildren(); for (const record of pageData.history || []) { const row = node('div', 'history-entry'); const copy = node('div'); copy.append(node('p', '', record.note || (record.kind === 'published' ? 'Published version' : 'Saved draft')), node('span', '', `${record.editor} · ${new Date(record.updatedAt).toLocaleString()}`)); row.append(copy, button('Restore as draft', () => restore(record.revision))); root.append(row); } if (!root.childNodes.length) root.append(node('p', '', 'No earlier saved versions yet.')); $('#history-dialog').showModal(); });
@@ -147,9 +157,14 @@ async function restore(version) { if (!confirmLeave()) return; $('#history-dialo
 $('#restore-original').addEventListener('click', () => restore('original')); $('#close-history').addEventListener('click', () => $('#history-dialog').close());
 document.querySelectorAll('[data-preview-size]').forEach(control => control.addEventListener('click', () => { document.querySelectorAll('[data-preview-size]').forEach(other => other.setAttribute('aria-pressed', String(other === control))); frame.classList.toggle('mobile-preview', control.dataset.previewSize === 'mobile'); }));
 window.addEventListener('message', event => {
-  if (event.origin !== location.origin || event.source !== frame.contentWindow || !event.data || busy) return;
+  if (event.origin !== location.origin || event.source !== frame.contentWindow || !event.data) return;
+  if (event.data.type === 'cms-ready') {
+    for (const [key, value] of Object.entries(pageData?.fields || {})) { if (!pageData.catalog.find(field => field.key === key)?.siteKey) post('cms-change', key, value); }
+    if (pendingFocus) { const field = pageData?.catalog.find(item => item.key === pendingFocus); pendingFocus = undefined; if (field) { selectedKey = field.key; setMode(field.type === 'image' ? 'image' : 'text'); chooseField(field.key); } } return;
+  }
+  if (busy) return;
+  if (event.data.type === 'cms-select' && event.data.scope === 'site' && pageData?.path !== '/_site') { if (confirmLeave()) { pendingFocus = event.data.key; work(() => loadPage('/_site')); } return; }
   if (event.data.type === 'cms-select') { const field = pageData?.catalog.find(item => item.key === event.data.key); if (field) { $('#field-search').value = ''; selectedKey = field.key; setMode(field.type === 'image' ? 'image' : 'text'); chooseField(field.key, false); post('cms-focus', field.key); } }
-  if (event.data.type === 'cms-ready') { for (const [key, value] of Object.entries(pageData?.fields || {})) post('cms-change', key, value); }
   if (event.data.type === 'cms-navigate' && pageList.some(page => page.path === event.data.path) && confirmLeave()) work(() => loadPage(event.data.path));
 });
 window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });

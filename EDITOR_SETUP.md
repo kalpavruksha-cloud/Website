@@ -40,8 +40,9 @@ needed. Drafts and published content are not tied to a particular Git commit.
 
 1. Choose a page from **Page to edit**. Click text or an image in the preview, or
    select a field from the sidebar. Text stays plain text and preserves the page's
-   layout. Navigation destinations and the shared header/footer remain maintained
-   in code.
+   layout. Choose **Site-wide header, footer & logos** for shared text, navigation
+   labels and logos. Clicking shared content opens these settings. Existing link
+   destinations and page layouts are preserved.
 2. Use **Images** to upload PNG, JPEG or WebP files, up to **3 MB each**. Write a
    useful image description and choose the crop focus. SVG uploads are disabled;
    the original approved logo assets are retained.
@@ -60,9 +61,12 @@ needed. Drafts and published content are not tied to a particular Git commit.
 6. Choose **Preview changes** to see edits in the browser, then **Save shared
    draft** to store them for teammates. Gallery, team and testimonial entries use
    **Preview changes** to refresh their layout. Add a short change note when useful.
-7. The owner signs in with the owner password and chooses **Publish saved draft**
+7. Open **Review saved website** to browse the team's latest saved drafts with a
+   clear review banner. This view requires sign-in. The owner signs in with the owner password and chooses **Publish saved draft**
    after reviewing. Publishing a collection also updates its homepage preview.
-   Other edited pages must be published individually.
+   Use **Publish reviewed website** to publish all pending saved drafts together,
+   or publish pages individually. If a teammate saves during this step, review the
+   latest drafts before retrying.
 
 Saving a draft does not change the public page. The preview shows the latest saved
 draft collections from other pages, while public pages use published collections.

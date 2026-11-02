@@ -3,16 +3,23 @@ import { createHash } from 'node:crypto';
 import { pages } from '../content.mjs';
 import { renderPage } from '../render.mjs';
 import { initialCollections, galleryCategories, samplePortraits } from '../collections.mjs';
+import { siteTarget, isEditableTarget } from './targets.mjs';
+import { annotateText, annotateSite, applyRuns, applySiteImages, stripEditorAttributes } from './fields.mjs';
 
 export const mediaPattern = /^\/api\/cms\?op=media&id=([a-f0-9-]{36}\.(?:png|jpg|webp))$/;
 const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 14);
 const labels = { H1: 'Page heading', H2: 'Section heading', H3: 'Subheading', P: 'Paragraph', FIGCAPTION: 'Image caption', A: 'Button label', SPAN: 'Section label' };
 const cache = new Map();
 export function compilePage(path, collections = initialCollections) {
-  if (!Object.hasOwn(pages, path)) throw new Error('Unknown page.');
+  if (!isEditableTarget(path)) throw new Error('Unknown page.');
   const cacheKey = `${path}:${hash(JSON.stringify(collections))}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey);
-  const { document } = parseHTML(renderPage(path, { collections }));
+  const { document } = parseHTML(renderPage(path === siteTarget ? '/' : path, { collections }));
+  const siteFields = annotateSite(document);
+  if (path === siteTarget) {
+    const result = { html: document.toString(), fields: siteFields, siteFields, fingerprint: hash(JSON.stringify(siteFields)) };
+    cache.set(cacheKey, result); return result;
+  }
   const fields = [];
   let index = 0;
   for (const block of document.querySelectorAll('main h1,main h2,main h3,main p,main figcaption,main .eyebrow,main .button')) {
@@ -32,10 +39,11 @@ export function compilePage(path, collections = initialCollections) {
     if (img.closest('[data-collection-item]')) continue;
     const original = img.getAttribute('src') || img.getAttribute('data-scene-src'); if (!original) continue;
     const key = `image-${index++}-${hash(original)}`; img.setAttribute('data-cms-key', key);
-    fields.push({ key, type: 'image', label: original.split('/').at(-1).replace(/\.[^.]+$/, '').replaceAll('-', ' '), original, originalAlt: img.getAttribute('alt') || '' });
+    fields.push({ key, type: 'image', label: original.split('/').at(-1).replace(/\.[^.]+$/, '').replaceAll('-', ' '), original, originalAlt: img.getAttribute('alt') || '', ...(img.hasAttribute('data-cms-site-key') ? { siteKey: img.getAttribute('data-cms-site-key') } : {}) });
   }
+  annotateText(document.querySelector('main'), fields);
   fields.unshift({ key: 'meta-title', type: 'meta', label: 'Search title', original: pages[path].title, maxLength: 160 }, { key: 'meta-description', type: 'meta', label: 'Search description', original: pages[path].description, maxLength: 400 });
-  const result = { html: document.toString(), fields, fingerprint: hash(JSON.stringify(fields)) };
+  const result = { html: document.toString(), fields, siteFields, fingerprint: hash(JSON.stringify(fields)) };
   if (cache.size > 60) cache.clear(); cache.set(cacheKey, result); return result;
 }
 export function validateChanges(path, changes, collections = initialCollections) {
@@ -84,7 +92,7 @@ export function validateItems(path, items) {
     return { id, name: bounded(item.name, 100, 'the person’s name'), role: bounded(item.role || '', 120, 'the designation or relationship', true), business: bounded(item.business, 100, 'the business'), quote: bounded(item.quote, 1500, 'the testimonial'), src, alt: bounded(item.alt || '', 300, 'the portrait description', true), sample: item.sample === true, consent: item.consent === true, approved: item.approved === true };
   });
 }
-export function renderEditedPage(path, changes = {}, { preview = false, collections = initialCollections } = {}) {
+export function renderEditedPage(path, changes = {}, { preview = false, collections = initialCollections, siteFields = {}, review = false } = {}) {
   const compiled = compilePage(path, collections); const { document } = parseHTML(compiled.html); const known = new Map(compiled.fields.map(field => [field.key, field]));
   for (const element of document.querySelectorAll('[data-cms-key]')) {
     const key = element.getAttribute('data-cms-key'); const field = known.get(key); const value = changes[key];
@@ -93,15 +101,29 @@ export function renderEditedPage(path, changes = {}, { preview = false, collecti
       if (element.hasAttribute('data-scene-src')) element.setAttribute('data-scene-src', value.src); else element.setAttribute('src', value.src);
       element.setAttribute('alt', value.alt); element.style.objectPosition = value.position;
     }
-    if (!preview) element.removeAttribute('data-cms-key');
   }
+  applyRuns(document, changes);
+  const shared = path === siteTarget ? changes : siteFields;
+  applyRuns(document, shared, 'site'); applySiteImages(document, shared, mediaPattern);
+  if (!preview) stripEditorAttributes(document);
   if (typeof changes['meta-title'] === 'string') { document.querySelector('title').textContent = changes['meta-title']; document.querySelector('meta[property="og:title"]').setAttribute('content', changes['meta-title']); }
   if (typeof changes['meta-description'] === 'string') { document.querySelector('meta[name="description"]').setAttribute('content', changes['meta-description']); document.querySelector('meta[property="og:description"]').setAttribute('content', changes['meta-description']); }
   if (preview) {
     document.querySelector('meta[name="robots"]').setAttribute('content', 'noindex,nofollow');
-    const script = document.createElement('script'); script.src = '/editor-preview.js'; script.defer = true;
-    const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '/editor-preview.css';
+    const script = document.createElement('script'); script.src = '/editor-preview.js?v=full-site-editor'; script.defer = true;
+    const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '/editor-preview.css?v=full-site-editor';
     document.head.appendChild(style); document.body.appendChild(script); document.body.setAttribute('data-cms-preview', 'true');
+  }
+  if (review) {
+    document.querySelector('meta[name="robots"]').setAttribute('content', 'noindex,nofollow');
+    const banner = document.createElement('aside'); banner.className = 'saved-review-banner';
+    banner.innerHTML = '<strong>Saved team draft</strong><span>Review mode · These changes are not published.</span><a href="/admin">Return to editor</a>';
+    document.body.prepend(banner);
+    const style = document.createElement('link'); style.rel = 'stylesheet'; style.href = '/review.css'; document.head.appendChild(style);
+    for (const anchor of document.querySelectorAll('a[href]')) {
+      const href = anchor.getAttribute('href');
+      if (href?.startsWith('/') && href !== '/admin') { const target = new URL(href, 'https://review.example'); if (Object.hasOwn(pages, target.pathname)) anchor.setAttribute('href', `/review?page=${encodeURIComponent(target.pathname)}${target.hash}`); }
+    }
   }
   return document.toString();
 }

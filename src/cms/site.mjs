@@ -1,7 +1,7 @@
 import { pages } from '../content.mjs';
 import { renderPage, renderNotFound } from '../render.mjs';
 import { makeStore, readState } from './storage.mjs';
-import { getCollections } from './service.mjs';
+import { getCollections, getSiteFields } from './service.mjs';
 import { renderEditedPage } from './catalog.mjs';
 
 export async function siteHandler(request, { store = makeStore() } = {}) {
@@ -11,7 +11,7 @@ export async function siteHandler(request, { store = makeStore() } = {}) {
   if (!exists) html = renderNotFound();
   else if (!store) html = renderPage(path);
   else {
-    try { const { state } = await readState(store); html = renderEditedPage(path, state.pages[path]?.published?.fields || {}, { collections: getCollections(state) }); }
+    try { const { state } = await readState(store); html = renderEditedPage(path, state.pages[path]?.published?.fields || {}, { collections: getCollections(state), siteFields: getSiteFields(state) }); }
     catch { return new Response('The website content is temporarily unavailable. Please try again shortly.', { status: 503, headers: { 'Retry-After': '30', 'Content-Type': 'text/plain; charset=utf-8' } }); }
   }
   return new Response(request.method === 'HEAD' ? null : html, { status: exists ? 200 : 404, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'DENY' } });

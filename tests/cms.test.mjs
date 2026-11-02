@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 import { parseHTML } from 'linkedom';
 import { createCmsHandler } from '../src/cms/service.mjs';
 import { siteHandler } from '../src/cms/site.mjs';
-import { compilePage, validateChanges } from '../src/cms/catalog.mjs';
+import { compilePage, validateChanges, renderEditedPage } from '../src/cms/catalog.mjs';
 import { ConflictError, makeStore } from '../src/cms/storage.mjs';
 import { makeSession, readSession } from '../src/cms/auth.mjs';
 import { handleWebRequest } from '../src/cms/node-adapter.mjs';
@@ -179,6 +181,98 @@ test('sign-in attempt limits persist across independent function instances', asy
   const anotherInstance = createCmsHandler({ store: f.store, env });
   const response = await anotherInstance(new Request(base + '/api/cms?op=login', { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Visitor', password: env.CMS_OWNER_PASSWORD }) }));
   assert.equal(response.status, 429); assert.equal(response.headers.get('retry-after'), '900');
+});
+
+test('site-wide text and logos persist across sessions and publish consistently across pages', async () => {
+  const f = fixture(); const owner = await f.login('owner'); const editor = await f.login('editor');
+  const settings = await f.page(editor, '/_site');
+  const footerText = settings.catalog.find(field => field.type === 'text' && field.original.includes('A diversified business ecosystem connecting'));
+  const navigation = settings.catalog.find(field => field.type === 'text' && field.original === 'The Company ');
+  assert.ok(footerText); assert.ok(navigation);
+  const logo = settings.catalog.find(field => field.type === 'image' && field.original.endsWith('/kalpavruksha-logo.png'));
+  const photo = await (await f.call('upload', { cookie: editor, raw: png })).json();
+  const fields = { [footerText.key]: 'Shared company introduction for automated testing.', [navigation.key]: 'Our Company ', [logo.key]: { src: photo.src, alt: 'Approved company logo', position: '50% 50%' } };
+  assert.equal((await f.save(editor, '/_site', fields)).status, 200);
+  const newInstance = createCmsHandler({ store: f.store, env });
+  const loaded = await (await newInstance(new Request(base + '/api/cms?op=page&page=%2F_site', { headers: { Cookie: editor } }))).json();
+  assert.equal(loaded.fields[footerText.key], fields[footerText.key]);
+  assert.ok(!(await f.live('/about')).includes(fields[footerText.key]));
+  assert.equal((await f.publish(editor, '/_site')).status, 403);
+  assert.equal((await f.publish(owner, '/_site')).status, 200);
+  for (const path of ['/', '/about', '/wealth', '/gallery', '/team']) {
+    const html = await f.live(path); const { document } = parseHTML(html);
+    assert.ok(document.querySelector('footer').textContent.includes(fields[footerText.key]));
+    assert.ok(document.querySelector('header').textContent.includes('Our Company'));
+    assert.equal(document.querySelector('header .brand img').getAttribute('src'), photo.src);
+    assert.equal(document.querySelector('footer .brand img').getAttribute('src'), photo.src);
+    assert.ok(!/data-cms-(?:key|runs|site-key|site-runs)=/.test(html), 'public pages have no editing markers');
+  }
+  assert.equal((await f.handler(new Request(base + photo.src))).status, 200);
+});
+
+test('extra page text edits preserve native date and caption element structure', async () => {
+  const f = fixture(); const owner = await f.login('owner'); const page = await f.page(owner);
+  const date = page.catalog.find(field => field.key.startsWith('page-text-') && field.original === '15');
+  assert.ok(date, 'office date is editable');
+  const before = parseHTML(renderPage('/')).document.querySelector('.office-date strong').outerHTML;
+  assert.equal((await f.save(owner, '/', { [date.key]: '21' })).status, 200);
+  assert.equal((await f.publish(owner)).status, 200);
+  const { document } = parseHTML(await f.live()); const after = document.querySelector('.office-date strong').outerHTML;
+  assert.equal(after, before.replace('>15<', '>21<'), 'no added wrappers or changed child spans');
+});
+
+test('authenticated review browses saved drafts and site-wide content while public pages remain unchanged', async () => {
+  const f = fixture(); const editor = await f.login('editor');
+  const anonymous = await f.call('review'); assert.equal(anonymous.status, 303); assert.match(anonymous.headers.get('location'), /\/admin\?next=/);
+  const page = await f.page(editor); const heading = page.catalog.find(field => field.label === 'Page heading');
+  assert.equal((await f.save(editor, '/', { [heading.key]: 'Shared review heading' })).status, 200);
+  const site = await f.page(editor, '/_site'); const footer = site.catalog.find(field => field.type === 'text' && field.original.includes('A diversified business ecosystem connecting'));
+  assert.equal((await f.save(editor, '/_site', { [footer.key]: 'Shared review footer' })).status, 200);
+  const response = await f.call('review', { cookie: editor }); assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const html = await response.text(); assert.ok(html.includes('Shared review heading')); assert.ok(html.includes('Shared review footer'));
+  assert.ok(html.includes('Saved team draft')); assert.ok(html.includes('/review?page=%2Fabout'));
+  assert.ok(!html.includes('data-cms-key=')); assert.ok(!html.includes('/editor-preview.js'));
+  const publicHtml = await f.live(); assert.ok(!publicHtml.includes('Shared review heading')); assert.ok(!publicHtml.includes('Shared review footer'));
+});
+
+test('visual editing bridge selects site-wide text and changes native text nodes without damaging nested content', async () => {
+  const { document, Event } = parseHTML(renderEditedPage('/', {}, { preview: true }));
+  const handlers = {}; const messages = [];
+  const parent = { location: { origin: base }, postMessage: message => messages.push(message) };
+  runInNewContext(await readFile(new URL('../public/editor-preview.js', import.meta.url), 'utf8'), {
+    document, parent, window: { addEventListener: (name, handler) => { handlers[name] = handler; } }, location: { href: base }, URL, matchMedia: () => ({ matches: true }),
+  });
+  const date = compilePage('/').fields.find(field => field.key.startsWith('page-text-') && field.original === '15');
+  const strong = document.querySelector('.office-date strong'); const month = strong.querySelector('span').outerHTML;
+  handlers.message({ origin: base, source: parent, data: { type: 'cms-change', key: date.key, value: '28' } });
+  assert.ok(strong.textContent.startsWith('28')); assert.equal(strong.querySelector('span').outerHTML, month);
+  handlers.message({ origin: 'https://other.example', source: parent, data: { type: 'cms-change', key: date.key, value: '99' } });
+  assert.ok(strong.textContent.startsWith('28'));
+  document.querySelector('header .nav-group summary').dispatchEvent(new Event('click', { bubbles: true, cancelable: true }));
+  assert.equal(messages.at(-1).scope, 'site');
+  assert.ok(compilePage('/_site').fields.some(field => field.key === messages.at(-1).key));
+});
+
+test('owner can publish the reviewed website together, while stale snapshots and invalid entries publish nothing', async () => {
+  const f = fixture(); const owner = await f.login('owner'); const editor = await f.login('editor');
+  await f.save(editor, '/', { 'meta-title': 'Reviewed home title' });
+  await f.save(editor, '/about', { 'meta-title': 'Reviewed about title' });
+  const snapshot = async () => Object.fromEntries((await (await f.call('overview', { cookie: owner })).json()).pending.map(page => [page.path, page.revision]));
+  const stale = await snapshot(); assert.equal(Object.keys(stale).length, 2);
+  assert.equal((await f.call('publish-all', { cookie: editor, body: { revisions: stale } })).status, 403);
+  await f.save(editor, '/about', { 'meta-title': 'Newer reviewed about title' });
+  assert.equal((await f.call('publish-all', { cookie: owner, body: { revisions: stale } })).status, 409);
+  assert.ok(!(await f.live()).includes('Reviewed home title'));
+  const quote = { id: 'unapproved-permission', name: 'Test Reviewer', business: 'Test relationship', quote: 'Test-only quote', approved: true, consent: false };
+  await f.save(editor, '/testimonials', {}, [quote]);
+  assert.equal((await f.call('publish-all', { cookie: owner, body: { revisions: await snapshot() } })).status, 400);
+  assert.ok(!(await f.live()).includes('Reviewed home title'), 'validation failure leaves all public pages unchanged');
+  await f.save(editor, '/testimonials', {}, []);
+  const response = await f.call('publish-all', { cookie: owner, body: { revisions: await snapshot() } });
+  assert.equal(response.status, 200); assert.equal((await response.json()).count, 3);
+  assert.ok((await f.live()).includes('Reviewed home title')); assert.ok((await f.live('/about')).includes('Newer reviewed about title'));
+  assert.equal(Object.keys(await snapshot()).length, 0);
 });
 
 test('local content storage survives a new instance and rejects conflicting writers', async t => {

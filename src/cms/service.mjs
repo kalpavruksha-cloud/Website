@@ -4,11 +4,20 @@ import { initialCollections, samplePortraits } from '../collections.mjs';
 import { compilePage, validateChanges, validateItems, renderEditedPage, mediaPattern } from './catalog.mjs';
 import { makeStore, readState, ConflictError } from './storage.mjs';
 import { credentialsReady, authenticate, makeSession, readSession, sessionCookie, requireOrigin, allowLogin } from './auth.mjs';
+import { siteTarget, isEditableTarget, editableTargets } from './targets.mjs';
 
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow' };
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), { status, headers: { ...headers, 'Content-Type': 'application/json; charset=utf-8', ...extra } });
 const error = (message, status) => Object.assign(new Error(message), { status });
 const normalize = value => value?.fields ? value : { fields: {}, items: undefined, revision: null };
+export const getSiteFields = (state, draft = false) => ((draft ? state.pages[siteTarget]?.draft : null) || state.pages[siteTarget]?.published)?.fields || {};
+function validatePublication(path, draft) {
+  if (['/testimonials', '/team'].includes(path)) {
+    if (draft.items?.some(item => !item.sample && item.approved && !item.consent)) throw error('Each approved testimonial or team profile requires permission to publish.', 400);
+    if (draft.items?.some(item => !item.sample && samplePortraits.includes(item.src))) throw error('Replace the sample portrait or keep this entry labelled as a sample template.', 400);
+  }
+}
+const publishRecord = (page, session, now) => ({ ...page, published: { ...page.draft, publishedAt: new Date(now()).toISOString(), publishedBy: session.name, kind: 'published' }, history: [...(page.published ? [page.published] : []), ...(page.history || [])].slice(0, 20) });
 export function getCollections(state, draft = false) {
   const pick = path => normalize((draft ? state.pages[path]?.draft : null) || state.pages[path]?.published);
   return { gallery: pick('/gallery').items ?? initialCollections.gallery, testimonials: pick('/testimonials').items ?? initialCollections.testimonials, team: pick('/team').items ?? initialCollections.team };
@@ -41,7 +50,8 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
     const store = suppliedStore === undefined ? makeStore(env) : suppliedStore;
     const ready = Boolean(store && credentialsReady(env)); const session = readSession(request, env, now());
     try {
-      if (request.method === 'GET' && op === 'status') return json({ configured: ready, session: session ? { name: session.name, role: session.role } : null, pages: Object.entries(pages).map(([path, page]) => ({ path, title: page.eyebrow || 'Home' })) });
+      if (request.method === 'GET' && op === 'status') return json({ configured: ready, session: session ? { name: session.name, role: session.role } : null, pages: editableTargets() });
+      if (request.method === 'GET' && op === 'review' && (!ready || !session)) return new Response(null, { status: 303, headers: { ...headers, Location: `${url.origin}/admin?next=${encodeURIComponent('/review' + url.search)}` } });
       if (request.method === 'POST') requireOrigin(request);
       if (op === 'logout' && request.method === 'POST') return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', request, true) });
       if (!ready && !(op === 'media' && request.method === 'GET' && store)) return json({ error: 'Editing is not enabled yet. The owner must connect private content storage and set the two editing passwords.' }, 503);
@@ -75,10 +85,24 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
         const id = `${randomUUID()}.${type[0]}`; await store.write(`cms/media/${id}`, data, null, type[1]);
         return json({ ok: true, src: `/api/cms?op=media&id=${id}` });
       }
-      const path = url.searchParams.get('page') || '/'; if (!Object.hasOwn(pages, path)) throw error('Page not found.', 404);
+      const path = url.searchParams.get('page') || '/'; if (!isEditableTarget(path)) throw error('Page not found.', 404);
       const { state, etag } = await readState(store); const page = state.pages[path] || {}; const draft = normalize(page.draft || page.published);
       const collections = getCollections(state, true);
-      if (op === 'preview' && request.method === 'GET') return new Response(renderEditedPage(path, draft.fields, { preview: true, collections }), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'; form-action 'none'" } });
+      const pending = editableTargets().filter(target => state.pages[target.path]?.draft && state.pages[target.path].draft.revision !== state.pages[target.path]?.published?.revision).map(target => ({ ...target, revision: state.pages[target.path].draft.revision, editor: state.pages[target.path].draft.editor }));
+      if (op === 'overview' && request.method === 'GET') return json({ pending });
+      if (op === 'publish-all' && request.method === 'POST') {
+        if (session.role !== 'owner') throw error('Only the site owner can publish the reviewed website.', 403);
+        const data = await readJSON(request); if (!pending.length) throw error('There are no unpublished saved drafts.', 400);
+        if (!data.revisions || typeof data.revisions !== 'object' || Array.isArray(data.revisions) || Object.keys(data.revisions).length !== pending.length || pending.some(target => data.revisions[target.path] !== target.revision)) throw new ConflictError();
+        for (const target of pending) {
+          const entry = state.pages[target.path]; validatePublication(target.path, entry.draft);
+          validateChanges(target.path, entry.draft.fields, collections); validateItems(target.path, entry.draft.items);
+        }
+        for (const target of pending) state.pages[target.path] = publishRecord(state.pages[target.path], session, now);
+        await store.write('cms/state.json', JSON.stringify(state), etag);
+        return json({ ok: true, count: pending.length });
+      }
+      if (['preview', 'review'].includes(op) && request.method === 'GET') return new Response(renderEditedPage(path, draft.fields, { preview: op === 'preview', review: op === 'review', collections, siteFields: getSiteFields(state, true) }), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'; form-action 'none'" } });
       if (op === 'page' && request.method === 'GET') { const compiled = compilePage(path, collections); return json({ path, catalog: compiled.fields, fingerprint: compiled.fingerprint, fields: draft.fields, items: draft.items ?? initialCollections[path.slice(1)], revision: page.draft?.revision || null, publishedRevision: page.published?.revision || null, history: (page.history || []).map(({ fields, items, ...record }) => record) }); }
       if (request.method !== 'POST' || !['save', 'publish', 'restore', 'render'].includes(op)) throw error('Editor action not found.', 404);
       const data = await readJSON(request);
@@ -90,7 +114,7 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
         const workingCollections = { ...collections, ...(path === '/gallery' ? { gallery: items } : path === '/testimonials' ? { testimonials: items } : path === '/team' ? { team: items } : {}) };
         if (data.fingerprint !== compilePage(path, collections).fingerprint) throw new ConflictError();
         const fields = validateChanges(path, data.fields, workingCollections); await validateMedia(store, fields, items);
-        if (op === 'render') return new Response(renderEditedPage(path, fields, { preview: true, collections: workingCollections }), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
+        if (op === 'render') return new Response(renderEditedPage(path, fields, { preview: true, collections: workingCollections, siteFields: getSiteFields(state, true) }), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
         next = { fields, ...(items ? { items } : {}), revision: randomUUID(), updatedAt: new Date(now()).toISOString(), editor: session.name, note: typeof data.note === 'string' ? data.note.slice(0, 250) : '', kind: 'draft' };
       }
       if (op === 'restore') {
@@ -102,11 +126,8 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
       const history = [...(page.draft ? [page.draft] : []), ...(page.history || [])].slice(0, 20);
       if (op === 'publish') {
         if (!page.draft) throw error('Save a draft before publishing.', 400);
-        if (['/testimonials', '/team'].includes(path)) {
-          if (page.draft.items?.some(item => !item.sample && item.approved && !item.consent)) throw error('Each approved testimonial or team profile requires permission to publish.', 400);
-          if (page.draft.items?.some(item => !item.sample && samplePortraits.includes(item.src))) throw error('Replace the sample portrait or keep this entry labelled as a sample template.', 400);
-        }
-        state.pages[path] = { ...page, published: { ...page.draft, publishedAt: new Date(now()).toISOString(), publishedBy: session.name, kind: 'published' }, history: [...(page.published ? [page.published] : []), ...(page.history || [])].slice(0, 20) };
+        validatePublication(path, page.draft);
+        state.pages[path] = publishRecord(page, session, now);
       } else state.pages[path] = { ...page, draft: next, history };
       await store.write('cms/state.json', JSON.stringify(state), etag);
       return json({ ok: true, revision: state.pages[path].draft.revision });

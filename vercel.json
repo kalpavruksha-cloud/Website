@@ -22,6 +22,19 @@
           "value": "SAMEORIGIN"
         }
       ]
+    },
+    {
+      "source": "/admin",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
     }
   ],
   "functions": {
@@ -30,6 +43,10 @@
     }
   },
   "rewrites": [
+    {
+      "source": "/review",
+      "destination": "/api/cms?op=review"
+    },
     {
       "source": "/team",
       "destination": "/api/site?path=%2Fteam"

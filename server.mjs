@@ -37,6 +37,9 @@ export function createApp({ deliver = deliverEnquiry, limiter = createRateLimite
       try { await handleWebRequest(request, response, cmsHandler); } catch { if (!response.headersSent) json(500, { error: 'The editor service could not process this request.' }); }
       return;
     }
+    if (path === '/review') {
+      await handleWebRequest(request, response, req => { const target = new URL(req.url); target.searchParams.set('op', 'review'); return cmsHandler(new Request(target, req)); }); return;
+    }
     if (path === '/admin' || path === '/admin/') {
       if (!['GET', 'HEAD'].includes(request.method)) { send(405, 'Method not allowed', 'text/plain', { Allow: 'GET, HEAD' }); return; }
       send(200, await readFile(resolve(publicDir, 'admin.html')), undefined, { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'" }); return;

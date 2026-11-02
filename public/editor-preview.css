@@ -3,3 +3,5 @@
 [data-cms-preview] [data-cms-key].cms-selected{outline:2px solid #fbb634;outline-offset:5px;background-color:#fbb63416}
 [data-cms-preview] img.cms-selected{outline-offset:-3px}
 [data-cms-preview] .reveal{opacity:1!important;transform:none!important}
+[data-cms-runs]:hover,[data-cms-site-runs]:hover,[data-cms-site-key]:hover{outline:1px dashed var(--gold-text);outline-offset:4px;cursor:pointer}
+[data-cms-preview] .cms-selected{outline:2px solid var(--gold);outline-offset:5px;background-color:#fbb63416}

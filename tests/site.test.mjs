@@ -95,6 +95,8 @@ test('HTTP serves all routes and assets, protects source and validates contact r
   assert.equal((await fetch(base + '/does-not-exist')).status, 404);
   assert.equal((await fetch(base + '/src/config.mjs')).status, 404);
   assert.equal((await fetch(base + '/.env')).status, 404);
+  const review = await fetch(base + '/review', { redirect: 'manual' });
+  assert.equal(review.status, 303); assert.match(review.headers.get('location'), /\/admin\?next=/); assert.equal(review.headers.get('cache-control'), 'no-store');
   const css = await fetch(base + '/styles.css'); assert.match(css.headers.get('content-type'), /text\/css/);
   const post = (data, origin = config.origin) => fetch(base + '/api/contact', { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
   assert.equal((await post(valid, 'https://untrusted.example')).status, 403);

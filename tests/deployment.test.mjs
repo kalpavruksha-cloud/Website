@@ -36,7 +36,8 @@ test('Vercel clean URL routes resolve to built HTML, including the homepage and 
     env: { ...process.env, VERCEL: '1', SITE_URL: '', VERCEL_PROJECT_PRODUCTION_URL: 'deployment-test.example', PUBLIC_SITE: 'false' },
     stdio: 'pipe',
   });
-  assert.equal(settings.rewrites.length, Object.keys(pages).length);
+  assert.equal(settings.rewrites.length, Object.keys(pages).length + 1);
+  assert.equal(settings.rewrites.find(rule => rule.source === '/review')?.destination, '/api/cms?op=review');
   for (const route of Object.keys(pages)) {
     assert.equal(settings.rewrites.find(rule => rule.source === route)?.destination, `/api/site?path=${encodeURIComponent(route)}`);
     const file = route === '/' ? 'index.html' : `${route.slice(1)}.html`;
