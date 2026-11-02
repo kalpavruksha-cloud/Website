@@ -8,8 +8,11 @@ export class ConflictError extends Error { constructor() { super('Another teamma
 const etag = body => createHash('sha256').update(body).digest('hex');
 const safeKey = key => /^cms\/[a-zA-Z0-9/._-]+$/.test(key) && !key.split('/').includes('..');
 export function makeStore(env = process.env) {
-  if (env.BLOB_READ_WRITE_TOKEN) {
-    const options = { token: env.BLOB_READ_WRITE_TOKEN, access: 'private' };
+  const oidcReady = Boolean(env.BLOB_STORE_ID && env.VERCEL_OIDC_TOKEN);
+  if (oidcReady || env.BLOB_READ_WRITE_TOKEN) {
+    // Let the SDK read and refresh Vercel's OIDC token itself. Passing that
+    // short-lived token explicitly would disable its automatic refresh.
+    const options = oidcReady ? { storeId: env.BLOB_STORE_ID, access: 'private' } : { token: env.BLOB_READ_WRITE_TOKEN, access: 'private' };
     return {
       kind: 'blob',
       async read(key) {

@@ -7,3 +7,5 @@ dist/
 test-results/
 .cms-data/
 .vercel/
+.vercel-auth/
+.vercel-cli-cache/

@@ -289,6 +289,15 @@ test('local content storage survives a new instance and rejects conflicting writ
   await assert.rejects(store.read('cms/../../.env'));
 });
 
+test('private storage recognizes Vercel OIDC connections as well as read-write tokens', async () => {
+  assert.equal(makeStore({ BLOB_STORE_ID: 'store_test', VERCEL_OIDC_TOKEN: 'test-only-token' }).kind, 'blob');
+  assert.equal(makeStore({ BLOB_READ_WRITE_TOKEN: 'test-only-token' }).kind, 'blob');
+  assert.equal(makeStore({ BLOB_STORE_ID: 'store_test' }), null);
+  const handler = createCmsHandler({ env: { ...env, BLOB_STORE_ID: 'store_test', VERCEL_OIDC_TOKEN: 'test-only-token' } });
+  const status = await (await handler(new Request(base + '/api/cms?op=status'))).json();
+  assert.equal(status.configured, true); assert.equal(status.setup.storageConfigured, true);
+});
+
 test('Node adapter supports authenticated JSON editing over HTTP', async t => {
   const f = fixture(); const server = createServer((request, response) => handleWebRequest(request, response, f.handler));
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));

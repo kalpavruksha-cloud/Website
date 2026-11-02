@@ -17,7 +17,9 @@ passwords or tokens through chat.
 
 1. Open the **Website** project in Vercel. In **Storage**, create and connect a
    **private Vercel Blob store**. Connect it to the environment your team will use
-   (normally Production). The integration supplies `BLOB_READ_WRITE_TOKEN`.
+   (normally Production). Vercel supplies `BLOB_STORE_ID` and a managed OIDC token automatically. The
+   editor supports this connection, as well as `BLOB_READ_WRITE_TOKEN` when a
+   static token is configured.
    A public Blob store is not suitable for private team drafts.
 2. In project **Settings → Environment Variables**, add:
 
