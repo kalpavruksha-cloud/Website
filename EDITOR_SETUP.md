@@ -53,8 +53,10 @@ needed. Drafts and published content are not tied to a particular Git commit.
    profile reviewed before publishing. KV's team belongs to the independent
    collaborating company; describe that relationship accurately.
 5. On **Testimonials**, enter genuine quotes, names and relationships. Record
-   permission and mark a quote reviewed. Only entries with both flags appear on
-   the public website. No sample customers or team profiles are seeded.
+   permission and mark a quote reviewed. Genuine entries need both flags to appear publicly. Three labelled photo
+   templates are supplied in each collection for design review. Replace the photo
+   and all details, then clear **Sample template**. A generated sample portrait
+   cannot be published as an unlabelled genuine person.
 6. Choose **Preview changes** to see edits in the browser, then **Save shared
    draft** to store them for teammates. Gallery, team and testimonial entries use
    **Preview changes** to refresh their layout. Add a short change note when useful.
@@ -80,7 +82,7 @@ import in this version. Keep `cms/state.json` when redeploying: it holds your
 shared content independently of the source templates.
 
 Uploads stay private until used by published page images, gallery entries or
-approved team profiles. Removing a public reference revokes unauthenticated access
+approved team/testimonial profiles, or clearly labelled sample cards. Removing a public reference revokes unauthenticated access
 through the image endpoint. Old uploads and login-limit records are retained in
 the private store; the owner can periodically clean records no longer referenced
 by drafts, public pages or retained history. The editor does not delete files.

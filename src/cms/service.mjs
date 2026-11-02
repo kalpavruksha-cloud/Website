@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { pages } from '../content.mjs';
-import { initialCollections } from '../collections.mjs';
+import { initialCollections, samplePortraits } from '../collections.mjs';
 import { compilePage, validateChanges, validateItems, renderEditedPage, mediaPattern } from './catalog.mjs';
 import { makeStore, readState, ConflictError } from './storage.mjs';
 import { credentialsReady, authenticate, makeSession, readSession, sessionCookie, requireOrigin, allowLogin } from './auth.mjs';
@@ -11,7 +11,7 @@ const error = (message, status) => Object.assign(new Error(message), { status })
 const normalize = value => value?.fields ? value : { fields: {}, items: undefined, revision: null };
 export function getCollections(state, draft = false) {
   const pick = path => normalize((draft ? state.pages[path]?.draft : null) || state.pages[path]?.published);
-  return { gallery: pick('/gallery').items || initialCollections.gallery, testimonials: pick('/testimonials').items || [], team: pick('/team').items || [] };
+  return { gallery: pick('/gallery').items ?? initialCollections.gallery, testimonials: pick('/testimonials').items ?? initialCollections.testimonials, team: pick('/team').items ?? initialCollections.team };
 }
 async function boundedBody(request, limit = 400000) {
   if (Number(request.headers.get('content-length') || 0) > limit) throw error('This request is too large.', 413);
@@ -60,7 +60,7 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
             const published = page.published;
             if (!published) return false;
             if (Object.values(published.fields || {}).some(value => value && typeof value === 'object' && value.src === src)) return true;
-            return (published.items || []).some(item => item.src === src && (path === '/gallery' || (path === '/team' && item.approved && item.consent)));
+            return (published.items || []).some(item => item.src === src && (path === '/gallery' || (['/team', '/testimonials'].includes(path) && (item.sample || (item.approved && item.consent)))));
           });
           if (!publicReference) throw error('Image not found.', 404);
         }
@@ -79,7 +79,7 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
       const { state, etag } = await readState(store); const page = state.pages[path] || {}; const draft = normalize(page.draft || page.published);
       const collections = getCollections(state, true);
       if (op === 'preview' && request.method === 'GET') return new Response(renderEditedPage(path, draft.fields, { preview: true, collections }), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8', 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'self'; form-action 'none'" } });
-      if (op === 'page' && request.method === 'GET') { const compiled = compilePage(path, collections); return json({ path, catalog: compiled.fields, fingerprint: compiled.fingerprint, fields: draft.fields, items: draft.items ?? (path === '/gallery' ? initialCollections.gallery : ['/testimonials', '/team'].includes(path) ? [] : undefined), revision: page.draft?.revision || null, publishedRevision: page.published?.revision || null, history: (page.history || []).map(({ fields, items, ...record }) => record) }); }
+      if (op === 'page' && request.method === 'GET') { const compiled = compilePage(path, collections); return json({ path, catalog: compiled.fields, fingerprint: compiled.fingerprint, fields: draft.fields, items: draft.items ?? initialCollections[path.slice(1)], revision: page.draft?.revision || null, publishedRevision: page.published?.revision || null, history: (page.history || []).map(({ fields, items, ...record }) => record) }); }
       if (request.method !== 'POST' || !['save', 'publish', 'restore', 'render'].includes(op)) throw error('Editor action not found.', 404);
       const data = await readJSON(request);
       if (op !== 'render' && data.baseRevision !== (page.draft?.revision || null)) throw new ConflictError();
@@ -94,7 +94,7 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
         next = { fields, ...(items ? { items } : {}), revision: randomUUID(), updatedAt: new Date(now()).toISOString(), editor: session.name, note: typeof data.note === 'string' ? data.note.slice(0, 250) : '', kind: 'draft' };
       }
       if (op === 'restore') {
-        const previous = data.version === 'original' ? { fields: {}, ...(path === '/gallery' ? { items: initialCollections.gallery } : ['/testimonials', '/team'].includes(path) ? { items: [] } : {}) } : page.history?.find(record => record.revision === data.version);
+        const previous = data.version === 'original' ? { fields: {}, ...(Object.hasOwn(initialCollections, path.slice(1)) ? { items: initialCollections[path.slice(1)] } : {}) } : page.history?.find(record => record.revision === data.version);
         if (!previous) throw error('That version is no longer in the recent history.', 404);
         validateChanges(path, previous.fields, collections); validateItems(path, previous.items);
         next = { ...previous, revision: randomUUID(), updatedAt: new Date(now()).toISOString(), editor: session.name, note: 'Restored as a draft', kind: 'draft' };
@@ -102,7 +102,10 @@ export function createCmsHandler({ store: suppliedStore, env = process.env, now 
       const history = [...(page.draft ? [page.draft] : []), ...(page.history || [])].slice(0, 20);
       if (op === 'publish') {
         if (!page.draft) throw error('Save a draft before publishing.', 400);
-        if (['/testimonials', '/team'].includes(path) && page.draft.items?.some(item => item.approved && !item.consent)) throw error('Each approved testimonial or team profile requires permission to publish.', 400);
+        if (['/testimonials', '/team'].includes(path)) {
+          if (page.draft.items?.some(item => !item.sample && item.approved && !item.consent)) throw error('Each approved testimonial or team profile requires permission to publish.', 400);
+          if (page.draft.items?.some(item => !item.sample && samplePortraits.includes(item.src))) throw error('Replace the sample portrait or keep this entry labelled as a sample template.', 400);
+        }
         state.pages[path] = { ...page, published: { ...page.draft, publishedAt: new Date(now()).toISOString(), publishedBy: session.name, kind: 'published' }, history: [...(page.published ? [page.published] : []), ...(page.history || [])].slice(0, 20) };
       } else state.pages[path] = { ...page, draft: next, history };
       await store.write('cms/state.json', JSON.stringify(state), etag);

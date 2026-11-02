@@ -44,8 +44,11 @@ test('main navigation and homepage expose Gallery, Testimonials and Our Team dir
     assert.ok(document.querySelector(`main a[href="${href}"]`));
   }
   for (const id of ['gallery', 'our-team', 'testimonials']) assert.ok(document.getElementById(id), id);
-  assert.equal(document.querySelectorAll('.testimonial-card').length, 0, 'no fabricated customer quotes');
-  assert.equal(document.querySelectorAll('.team-card').length, 0, 'no fabricated team members');
+  for (const selector of ['.testimonial-card', '.team-card']) {
+    const cards = [...document.querySelectorAll(selector)]; assert.equal(cards.length, 3);
+    for (const card of cards) { assert.equal(card.dataset.sample, 'true'); assert.ok(card.querySelector('.sample-card-label')); assert.ok(card.querySelector('img')); }
+  }
+  assert.equal(document.querySelectorAll('.sample-content-notice').length, 2);
 });
 
 test('editor fails closed before setup, requires authentication and rejects other origins', async () => {
@@ -144,6 +147,30 @@ test('testimonials require consent and approval, and owner can restore a previou
   assert.equal((await f.publish(owner, '/testimonials')).status, 200);
   assert.ok((await f.live('/testimonials')).includes(quote.quote));
   assert.equal(compilePage('/').fingerprint, compilePage('/', { ...initialCollections, testimonials: [quote] }).fingerprint);
+});
+
+test('photo templates can be replaced with genuine content without publishing an unlabelled sample portrait', async () => {
+  const f = fixture(); const owner = await f.login('owner');
+  for (const path of ['/team', '/testimonials']) {
+    const current = await f.page(owner, path); assert.equal(current.items.length, 3);
+    assert.ok(current.items.every(item => item.sample && item.src));
+    assert.equal((await f.save(owner, path, {}, current.items)).status, 200);
+    assert.equal((await f.publish(owner, path)).status, 200, 'labelled templates are intentionally publishable');
+    const item = { ...current.items[0], sample: false, consent: true, approved: true, name: 'Actual Test Person' };
+    assert.equal((await f.save(owner, path, {}, [item])).status, 200);
+    assert.equal((await f.publish(owner, path)).status, 400, 'AI portrait must remain labelled until replaced');
+    const photo = await (await f.call('upload', { cookie: owner, raw: png })).json();
+    item.src = photo.src; item.alt = 'Approved test portrait';
+    assert.equal((await f.save(owner, path, {}, [item])).status, 200);
+    assert.equal((await f.publish(owner, path)).status, 200);
+    const { document } = parseHTML(await f.live(path));
+    const card = document.querySelector(path === '/team' ? '.team-card' : '.testimonial-card');
+    assert.equal(card.dataset.sample, 'false'); assert.equal(card.querySelector('.sample-card-label'), null);
+    assert.equal(card.querySelector('img').getAttribute('src'), photo.src);
+    assert.ok(card.textContent.includes('Actual Test Person'));
+    assert.equal((await f.handler(new Request(base + photo.src))).status, 200, 'published testimonial photos are accessible');
+    assert.equal(document.querySelector('.sample-content-notice'), null);
+  }
 });
 
 test('sign-in attempt limits persist across independent function instances', async () => {

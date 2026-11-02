@@ -98,7 +98,7 @@ To activate shared editing, follow **[EDITOR_SETUP.md](EDITOR_SETUP.md)**: conne
 
 Set `SITE_URL` to the approved public origin when available. Otherwise Vercel's production or deployment domain supplies canonical and sitemap URLs. Keep `PUBLIC_SITE=false` until final review. Shared content depends on the configured store; if the store cannot be read, a 503 response is returned rather than substituting old default content.
 
-The editor covers page content, search metadata, page images and three collections. Header/footer structure, navigation destinations and business relationships are maintained in source code. Empty testimonials and team sections invite contact; no invented profiles or quotes are included. Genuine records appear after entry, permission, review and owner publication.
+The editor covers page content, search metadata, page images and three collections. Header/footer structure, navigation destinations and business relationships are maintained in source code. Team and Testimonials start with three clearly labelled sample cards each, using AI-generated portraits and instructional placeholder details. Both collections support photo uploads. Replace each portrait and all details, clear the sample-template flag, record permission and mark reviewed before owner publication. See [SAMPLE_PORTRAITS.md](SAMPLE_PORTRAITS.md) for asset provenance and the final prompt set. Empty collections still show contact invitations.
 
 The contact endpoint is currently supplied by the local/Node server. Enquiry delivery on Vercel still needs the verified email details and a separate Function integration.
 

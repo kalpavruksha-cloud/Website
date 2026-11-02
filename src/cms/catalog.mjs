@@ -2,7 +2,7 @@ import { parseHTML } from 'linkedom';
 import { createHash } from 'node:crypto';
 import { pages } from '../content.mjs';
 import { renderPage } from '../render.mjs';
-import { initialCollections, galleryCategories } from '../collections.mjs';
+import { initialCollections, galleryCategories, samplePortraits } from '../collections.mjs';
 
 export const mediaPattern = /^\/api\/cms\?op=media&id=([a-f0-9-]{36}\.(?:png|jpg|webp))$/;
 const hash = text => createHash('sha256').update(text).digest('hex').slice(0, 14);
@@ -70,8 +70,8 @@ export function validateItems(path, items) {
     const id = bounded(item.id, 64, 'item ID'); if (!/^[a-zA-Z0-9-]+$/.test(id) || ids.has(id)) throw new Error('Invalid or duplicate item ID.'); ids.add(id);
     if (path === '/team') {
       const src = bounded(item.src || '', 200, 'an uploaded portrait', true);
-      if (src && !mediaPattern.test(src)) throw new Error('Use an uploaded team portrait.');
-      return { id, name: bounded(item.name, 100, 'the team member’s name'), role: bounded(item.role, 120, 'the role'), business: bounded(item.business, 100, 'the business'), bio: bounded(item.bio, 1000, 'the introduction', true), src, alt: bounded(item.alt || '', 300, 'the portrait description', true), consent: item.consent === true, approved: item.approved === true };
+      if (src && !mediaPattern.test(src) && !samplePortraits.includes(src)) throw new Error('Use an uploaded portrait or an original sample portrait.');
+      return { id, name: bounded(item.name, 100, 'the team member’s name'), role: bounded(item.role, 120, 'the role'), business: bounded(item.business, 100, 'the business'), bio: bounded(item.bio, 1000, 'the introduction', true), src, alt: bounded(item.alt || '', 300, 'the portrait description', true), sample: item.sample === true, consent: item.consent === true, approved: item.approved === true };
     }
     if (path === '/gallery') {
       const src = bounded(item.src, 200, 'an uploaded image');
@@ -79,7 +79,9 @@ export function validateItems(path, items) {
       if (!galleryCategories.includes(item.category)) throw new Error('Choose a gallery category.');
       return { id, title: bounded(item.title, 120, 'the photo title'), category: item.category, src, alt: bounded(item.alt, 300, 'the image description'), caption: bounded(item.caption, 500, 'the caption', true), illustrative: item.illustrative !== false };
     }
-    return { id, name: bounded(item.name, 100, 'the person’s name'), business: bounded(item.business, 100, 'the business'), quote: bounded(item.quote, 1500, 'the testimonial'), consent: item.consent === true, approved: item.approved === true };
+    const src = bounded(item.src || '', 200, 'the portrait', true);
+    if (src && !mediaPattern.test(src) && !samplePortraits.includes(src)) throw new Error('Use an uploaded portrait or an original sample portrait.');
+    return { id, name: bounded(item.name, 100, 'the person’s name'), role: bounded(item.role || '', 120, 'the designation or relationship', true), business: bounded(item.business, 100, 'the business'), quote: bounded(item.quote, 1500, 'the testimonial'), src, alt: bounded(item.alt || '', 300, 'the portrait description', true), sample: item.sample === true, consent: item.consent === true, approved: item.approved === true };
   });
 }
 export function renderEditedPage(path, changes = {}, { preview = false, collections = initialCollections } = {}) {

@@ -61,7 +61,7 @@ function collectionField(container, label, value, setter, { long = false, max = 
 function check(container, text, checked, setter) { const label = node('label', 'checkbox-label'); const control = node('input'); control.type = 'checkbox'; control.checked = checked; label.append(control, node('span', '', text)); container.append(label); control.addEventListener('change', () => { setter(control.checked); changed(); }); }
 function renderCollection() {
   const gallery = pageData.path === '/gallery'; const team = pageData.path === '/team'; $('#collection-title').textContent = gallery ? 'Gallery photographs' : team ? 'Team profiles' : 'Testimonials';
-  $('#collection-help').textContent = gallery ? 'Add verified company photographs, clear captions and a business category. Keep concept images labelled illustrative.' : team ? 'Add real team members, their roles, introductions and optional portraits. Obtain permission before publishing a profile.' : 'Use genuine quotes only. Record the person’s permission and mark the quote approved before the owner publishes it.';
+  $('#collection-help').textContent = gallery ? 'Add verified company photographs, clear captions and a business category. Keep concept images labelled illustrative.' : 'Replace sample portraits and details with your own content, then clear the sample-template checkbox. For genuine entries, record permission and mark reviewed before the owner publishes.';
   const root = $('#collection-entries'); root.replaceChildren(); const items = pageData.items || [];
   if (!items.length) root.append(node('p', 'collection-empty', gallery ? 'Add your first gallery photograph.' : team ? 'Add your first team member using their verified name and role.' : 'No testimonials have been entered. Add a genuine quote with permission when one is available.'));
   items.forEach((item, index) => {
@@ -69,17 +69,20 @@ function renderCollection() {
     const up = button('↑', () => { if (index) { [items[index - 1], items[index]] = [items[index], items[index - 1]]; changed(); renderCollection(); } }); up.setAttribute('aria-label', 'Move entry up'); up.disabled = index === 0;
     const down = button('↓', () => { if (index < items.length - 1) { [items[index + 1], items[index]] = [items[index], items[index + 1]]; changed(); renderCollection(); } }); down.setAttribute('aria-label', 'Move entry down'); down.disabled = index === items.length - 1;
     toolbar.append(up, down, button('Remove', () => { if (confirm('Remove this entry from the draft? The published version stays unchanged until publication.')) { items.splice(index, 1); changed(); renderCollection(); } })); article.append(toolbar);
-    if (gallery || team) {
+    {
       if (item.src) { const image = node('img', 'collection-image-preview'); image.src = item.src; image.alt = item.alt; article.append(image); }
-      const file = node('input'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp'; labelled(article, (team ? 'Portrait (optional)' : 'Photograph') + ' · maximum 3 MB', file);
+      const file = node('input'); file.type = 'file'; file.accept = 'image/png,image/jpeg,image/webp'; labelled(article, (gallery ? 'Photograph' : 'Portrait (optional)') + ' · maximum 3 MB', file);
       file.addEventListener('change', () => work(async () => { if (!file.files[0]) return; item.src = await upload(file.files[0]); changed(); renderCollection(); }));
+      if (!gallery) {
+        check(article, 'Sample template — show a visible sample label on the website.', item.sample === true, value => { item.sample = value; });
+      }
       if (gallery) {
       collectionField(article, 'Title', item.title, value => { item.title = value; }, { max: 120 });
       const category = node('select'); for (const name of ['Wealth', 'KV Constructions', 'Real Estate', 'Rudraksh', 'Brindavan Resto']) { const option = node('option', '', name); option.value = name; category.append(option); } category.value = item.category; labelled(article, 'Business category', category); category.addEventListener('change', () => { item.category = category.value; changed(); });
       collectionField(article, 'Image description', item.alt, value => { item.alt = value; });
       collectionField(article, 'Caption', item.caption, value => { item.caption = value; }, { long: true, max: 500 });
       check(article, 'Illustrative or conceptual image (not a verified company photograph)', item.illustrative !== false, value => { item.illustrative = value; });
-      } else {
+      } else if (team) {
       collectionField(article, 'Display name', item.name, value => { item.name = value; }, { max: 100 });
       collectionField(article, 'Role / designation', item.role, value => { item.role = value; }, { max: 120 });
       collectionField(article, 'Business / team', item.business, value => { item.business = value; }, { max: 100 });
@@ -88,13 +91,16 @@ function renderCollection() {
       if (item.src) article.append(button('Remove portrait', () => { item.src = ''; item.alt = ''; changed(); renderCollection(); }));
       check(article, 'Permission to publish this profile and portrait has been obtained.', item.consent === true, value => { item.consent = value; });
       check(article, 'This profile has been checked and is ready for owner approval.', item.approved === true, value => { item.approved = value; });
-      }
-    } else {
+      } else {
       collectionField(article, 'Person’s display name', item.name, value => { item.name = value; }, { max: 100 });
+      collectionField(article, 'Designation / relationship (optional)', item.role, value => { item.role = value; }, { max: 120 });
       collectionField(article, 'Business / relationship', item.business, value => { item.business = value; }, { max: 100 });
       collectionField(article, 'Their exact quote', item.quote, value => { item.quote = value; }, { long: true, max: 1500 });
-      check(article, 'Permission to publish this name and quote has been obtained.', item.consent === true, value => { item.consent = value; });
+      collectionField(article, 'Photograph description', item.alt, value => { item.alt = value; });
+      if (item.src) article.append(button('Remove photograph', () => { item.src = ''; item.alt = ''; changed(); renderCollection(); }));
+      check(article, 'Permission to publish this name, quote and photograph has been obtained.', item.consent === true, value => { item.consent = value; });
       check(article, 'This genuine quote has been reviewed and is ready for owner approval.', item.approved === true, value => { item.approved = value; });
+      }
     }
     root.append(article);
   });
@@ -135,7 +141,7 @@ $('#save-button').addEventListener('click', () => work(async () => { message('Sa
 $('#refresh-preview').addEventListener('click', () => work(async () => { message('Preparing the preview…'); const html = await api('render', { method: 'POST', body: payload() }); frame.srcdoc = html; message('Preview updated with your browser changes. Save the shared draft to keep them.'); }));
 $('#publish-button').addEventListener('click', () => work(async () => { if (dirty) throw new Error('Save your shared draft before publishing.'); if (!confirm('Publish the latest saved draft of this page to the website?')) return; const path = pageData.path; await api('publish', { method: 'POST', body: { baseRevision: pageData.revision } }); await loadPage(path); message('Published. Open the published page to review the result.', 'success'); }));
 $('#download-button').addEventListener('click', () => { const blob = new Blob([JSON.stringify({ page: pageData.path, ...payload() }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = node('a'); link.href = url; link.download = `kalpavruksha-${pageData.path.replaceAll('/', '-') || 'home'}-draft.json`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); message('A draft backup was downloaded. Save the shared draft to share changes with the team.'); });
-$('#add-entry').addEventListener('click', () => { pageData.items ||= []; if (pageData.items.length >= (pageData.path === '/gallery' ? 40 : 25)) { message('This collection has reached its entry limit.', 'error'); return; } pageData.items.push(pageData.path === '/gallery' ? { id: crypto.randomUUID(), title: '', src: '', alt: '', caption: '', category: 'Wealth', illustrative: true } : pageData.path === '/team' ? { id: crypto.randomUUID(), name: '', role: '', business: '', bio: '', src: '', alt: '', consent: false, approved: false } : { id: crypto.randomUUID(), name: '', business: '', quote: '', consent: false, approved: false }); changed(); renderCollection(); });
+$('#add-entry').addEventListener('click', () => { pageData.items ||= []; if (pageData.items.length >= (pageData.path === '/gallery' ? 40 : 25)) { message('This collection has reached its entry limit.', 'error'); return; } pageData.items.push(pageData.path === '/gallery' ? { id: crypto.randomUUID(), title: '', src: '', alt: '', caption: '', category: 'Wealth', illustrative: true } : pageData.path === '/team' ? { id: crypto.randomUUID(), name: '', role: '', business: '', bio: '', src: '', alt: '', sample: false, consent: false, approved: false } : { id: crypto.randomUUID(), name: '', role: '', business: '', quote: '', src: '', alt: '', sample: false, consent: false, approved: false }); changed(); renderCollection(); });
 $('#history-button').addEventListener('click', () => { const root = $('#history-list'); root.replaceChildren(); for (const record of pageData.history || []) { const row = node('div', 'history-entry'); const copy = node('div'); copy.append(node('p', '', record.note || (record.kind === 'published' ? 'Published version' : 'Saved draft')), node('span', '', `${record.editor} · ${new Date(record.updatedAt).toLocaleString()}`)); row.append(copy, button('Restore as draft', () => restore(record.revision))); root.append(row); } if (!root.childNodes.length) root.append(node('p', '', 'No earlier saved versions yet.')); $('#history-dialog').showModal(); });
 async function restore(version) { if (!confirmLeave()) return; $('#history-dialog').close(); await work(async () => { const path = pageData.path; await api('restore', { method: 'POST', body: { baseRevision: pageData.revision, version } }); await loadPage(path); message('Version restored as a shared draft. Review it before publishing.', 'success'); }); }
 $('#restore-original').addEventListener('click', () => restore('original')); $('#close-history').addEventListener('click', () => $('#history-dialog').close());
