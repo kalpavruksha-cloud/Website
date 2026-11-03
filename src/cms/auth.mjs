@@ -6,6 +6,15 @@ const digest = value => createHash('sha256').update(value).digest();
 const safeEqual = (a, b) => timingSafeEqual(digest(a), digest(b));
 const signingKey = env => digest(`${env.CMS_OWNER_PASSWORD}\0${env.CMS_EDITOR_PASSWORD}\0kalpavruksha-editor-v1`);
 export const credentialsReady = env => typeof env.CMS_OWNER_PASSWORD === 'string' && env.CMS_OWNER_PASSWORD.length >= 16 && typeof env.CMS_EDITOR_PASSWORD === 'string' && env.CMS_EDITOR_PASSWORD.length >= 16 && env.CMS_OWNER_PASSWORD !== env.CMS_EDITOR_PASSWORD;
+export function credentialIssues(env) {
+  const issues = [];
+  for (const [key, label] of [['CMS_EDITOR_PASSWORD', 'Team'], ['CMS_OWNER_PASSWORD', 'Owner']]) {
+    if (typeof env[key] !== 'string' || !env[key]) issues.push(`${label} password is missing.`);
+    else if (env[key].length < 16) issues.push(`${label} password is shorter than 16 characters.`);
+  }
+  if (env.CMS_EDITOR_PASSWORD && env.CMS_OWNER_PASSWORD && env.CMS_EDITOR_PASSWORD === env.CMS_OWNER_PASSWORD) issues.push('Team and owner passwords must be different.');
+  return issues;
+}
 export function authenticate(password, env) {
   if (!credentialsReady(env) || typeof password !== 'string' || password.length > 500) return null;
   const owner = safeEqual(password, env.CMS_OWNER_PASSWORD); const editor = safeEqual(password, env.CMS_EDITOR_PASSWORD);

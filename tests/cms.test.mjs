@@ -56,10 +56,10 @@ test('main navigation and homepage expose Gallery, Testimonials and Our Team dir
 test('editor fails closed before setup, requires authentication and rejects other origins', async () => {
   const disabled = createCmsHandler({ store: null, env: {} });
   const status = await (await disabled(new Request(base + '/api/cms'))).json();
-  assert.equal(status.configured, false); assert.deepEqual(status.setup, { storageConfigured: false, passwordsConfigured: false });
+  assert.equal(status.configured, false); assert.deepEqual(status.setup, { storageConfigured: false, passwordsConfigured: false, passwordIssues: ['Team password is missing.', 'Owner password is missing.'] });
   assert.equal((await disabled(new Request(base + '/api/cms?op=login', { method: 'POST', headers: { Origin: base } }))).status, 503);
   const f = fixture(); assert.equal((await f.call('page')).status, 401);
-  const configured = await (await f.call('status')).json(); assert.deepEqual(configured.setup, { storageConfigured: true, passwordsConfigured: true });
+  const configured = await (await f.call('status')).json(); assert.deepEqual(configured.setup, { storageConfigured: true, passwordsConfigured: true, passwordIssues: [] });
   assert.ok(!JSON.stringify(configured).includes(env.CMS_OWNER_PASSWORD)); assert.ok(!JSON.stringify(configured).includes(env.CMS_EDITOR_PASSWORD));
   assert.equal((await f.call('login', { body: {}, origin: 'https://other.example' })).status, 403);
   assert.equal((await f.call('login', { body: null })).status, 400);

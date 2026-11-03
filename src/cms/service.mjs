@@ -3,7 +3,7 @@ import { pages } from '../content.mjs';
 import { initialCollections, samplePortraits } from '../collections.mjs';
 import { compilePage, validateChanges, validateItems, renderEditedPage, mediaPattern } from './catalog.mjs';
 import { makeStore, readState, ConflictError } from './storage.mjs';
-import { credentialsReady, authenticate, makeSession, readSession, sessionCookie, requireOrigin, allowLogin } from './auth.mjs';
+import { credentialsReady, credentialIssues, authenticate, makeSession, readSession, sessionCookie, requireOrigin, allowLogin } from './auth.mjs';
 import { siteTarget, isEditableTarget, editableTargets } from './targets.mjs';
 
 const headers = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'X-Robots-Tag': 'noindex, nofollow' };
@@ -51,7 +51,7 @@ export function createCmsHandler({ store: suppliedStore, env: suppliedEnv, now =
     const store = suppliedStore === undefined ? makeStore(env) : suppliedStore;
     const ready = Boolean(store && credentialsReady(env)); const session = readSession(request, env, now());
     try {
-      if (request.method === 'GET' && op === 'status') return json({ configured: ready, setup: { storageConfigured: Boolean(store), passwordsConfigured: credentialsReady(env) }, ...(url.searchParams.get('diagnostics') === '1' ? { diagnostics: { node: process.version, storeIdPresent: Boolean(process.env.BLOB_STORE_ID), oidcPresent: Boolean(process.env.VERCEL_OIDC_TOKEN), editorPasswordPresent: Boolean(process.env.CMS_EDITOR_PASSWORD), ownerPasswordPresent: Boolean(process.env.CMS_OWNER_PASSWORD) } } : {}), session: session ? { name: session.name, role: session.role } : null, pages: editableTargets() });
+      if (request.method === 'GET' && op === 'status') return json({ configured: ready, setup: { storageConfigured: Boolean(store), passwordsConfigured: credentialsReady(env), passwordIssues: credentialIssues(env) }, ...(url.searchParams.get('diagnostics') === '1' ? { diagnostics: { node: process.version, storeIdPresent: Boolean(process.env.BLOB_STORE_ID), oidcPresent: Boolean(process.env.VERCEL_OIDC_TOKEN), editorPasswordPresent: Boolean(process.env.CMS_EDITOR_PASSWORD), ownerPasswordPresent: Boolean(process.env.CMS_OWNER_PASSWORD) } } : {}), session: session ? { name: session.name, role: session.role } : null, pages: editableTargets() });
       if (request.method === 'GET' && op === 'review' && (!ready || !session)) return new Response(null, { status: 303, headers: { ...headers, Location: `${url.origin}/admin?next=${encodeURIComponent('/review' + url.search)}` } });
       if (request.method === 'POST') requireOrigin(request);
       if (op === 'logout' && request.method === 'POST') return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', request, true) });

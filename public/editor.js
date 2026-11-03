@@ -127,7 +127,7 @@ async function initialize() {
     const select = $('#page-select'); select.replaceChildren(); for (const page of pageList) { const option = node('option', '', `${page.path === '/' ? 'Home' : page.title} — ${page.path}`); option.value = page.path; select.append(option); }
     $('#setup-notice').hidden = status.configured; $('#login-controls').disabled = !status.configured;
     $('#setup-storage-status').textContent = status.setup?.storageConfigured ? 'Storage setting present' : 'Storage setting missing';
-    $('#setup-password-status').textContent = status.setup?.passwordsConfigured ? 'Password settings ready' : 'Password settings missing or invalid';
+    $('#setup-password-status').textContent = status.setup?.passwordsConfigured ? 'Password settings ready' : status.setup?.passwordIssues?.join(' ') || 'Password settings missing or invalid';
     if (status.session && status.configured) { showStudio(status.session); await work(() => loadPage('/')); }
     else { $('#studio').hidden = true; $('#login-view').hidden = false; message(status.configured ? 'Use the team password to save drafts or the owner password to publish.' : 'Editing is protected until the owner completes the one-time activation.'); }
   } catch (error) { message(error.message, 'error'); $('#login-controls').disabled = true; }
