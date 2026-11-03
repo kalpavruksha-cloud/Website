@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Kalpavruksha multi-page corporate website",
   "engines": {
-    "node": ">=22"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "node --watch server.mjs",
@@ -19,6 +19,8 @@
     "linkedom": "0.18.15"
   },
   "overrides": {
-    "@vercel/cli-config": { "zod": "4.6.6" }
+    "@vercel/cli-config": {
+      "zod": "4.6.6"
+    }
   }
 }

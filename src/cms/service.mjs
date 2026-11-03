@@ -44,13 +44,14 @@ async function validateMedia(store, fields, items) {
   for (const item of items || []) if (item.src) urls.add(item.src);
   for (const url of urls) { const match = mediaPattern.exec(url || ''); if (match && !(await store.read(`cms/media/${match[1]}`))) throw error('An uploaded image is missing. Upload it again before saving.', 400); }
 }
-export function createCmsHandler({ store: suppliedStore, env = process.env, now = Date.now } = {}) {
+export function createCmsHandler({ store: suppliedStore, env: suppliedEnv, now = Date.now } = {}) {
   return async function cmsHandler(request) {
+    const env = suppliedEnv || process.env;
     const url = new URL(request.url); const op = url.searchParams.get('op') || 'status';
     const store = suppliedStore === undefined ? makeStore(env) : suppliedStore;
     const ready = Boolean(store && credentialsReady(env)); const session = readSession(request, env, now());
     try {
-      if (request.method === 'GET' && op === 'status') return json({ configured: ready, setup: { storageConfigured: Boolean(store), passwordsConfigured: credentialsReady(env) }, session: session ? { name: session.name, role: session.role } : null, pages: editableTargets() });
+      if (request.method === 'GET' && op === 'status') return json({ configured: ready, setup: { storageConfigured: Boolean(store), passwordsConfigured: credentialsReady(env) }, ...(url.searchParams.get('diagnostics') === '1' ? { diagnostics: { node: process.version, storeIdPresent: Boolean(process.env.BLOB_STORE_ID), oidcPresent: Boolean(process.env.VERCEL_OIDC_TOKEN), editorPasswordPresent: Boolean(process.env.CMS_EDITOR_PASSWORD), ownerPasswordPresent: Boolean(process.env.CMS_OWNER_PASSWORD) } } : {}), session: session ? { name: session.name, role: session.role } : null, pages: editableTargets() });
       if (request.method === 'GET' && op === 'review' && (!ready || !session)) return new Response(null, { status: 303, headers: { ...headers, Location: `${url.origin}/admin?next=${encodeURIComponent('/review' + url.search)}` } });
       if (request.method === 'POST') requireOrigin(request);
       if (op === 'logout' && request.method === 'POST') return json({ ok: true }, 200, { 'Set-Cookie': sessionCookie('', request, true) });

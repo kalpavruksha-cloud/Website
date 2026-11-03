@@ -4,7 +4,7 @@ A 26-page corporate website with a cinematic homepage, direct Gallery / Testimon
 
 ## Run locally
 
-Requires Node.js 22 or later. Install the locked dependencies first.
+Requires Node.js 24.x, matching the deployed runtime. Install the locked dependencies first.
 
 ```powershell
 npm ci
