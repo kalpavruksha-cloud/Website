@@ -291,6 +291,7 @@ test('local content storage survives a new instance and rejects conflicting writ
 
 test('private storage recognizes Vercel OIDC connections as well as read-write tokens', async () => {
   assert.equal(makeStore({ BLOB_STORE_ID: 'store_test', VERCEL_OIDC_TOKEN: 'test-only-token' }).kind, 'blob');
+  assert.equal(makeStore({ BLOB_STORE_ID: 'store_test', VERCEL: '1' }).kind, 'blob', 'Vercel supplies OIDC through request context');
   assert.equal(makeStore({ BLOB_READ_WRITE_TOKEN: 'test-only-token' }).kind, 'blob');
   assert.equal(makeStore({ BLOB_STORE_ID: 'store_test' }), null);
   const handler = createCmsHandler({ env: { ...env, BLOB_STORE_ID: 'store_test', VERCEL_OIDC_TOKEN: 'test-only-token' } });

@@ -8,7 +8,9 @@ export class ConflictError extends Error { constructor() { super('Another teamma
 const etag = body => createHash('sha256').update(body).digest('hex');
 const safeKey = key => /^cms\/[a-zA-Z0-9/._-]+$/.test(key) && !key.split('/').includes('..');
 export function makeStore(env = process.env) {
-  const oidcReady = Boolean(env.BLOB_STORE_ID && env.VERCEL_OIDC_TOKEN);
+  // On Vercel the SDK can obtain OIDC from the request context even when
+  // VERCEL_OIDC_TOKEN is absent from process.env.
+  const oidcReady = Boolean(env.BLOB_STORE_ID && (env.VERCEL || env.VERCEL_OIDC_TOKEN));
   if (oidcReady || env.BLOB_READ_WRITE_TOKEN) {
     // Let the SDK read and refresh Vercel's OIDC token itself. Passing that
     // short-lived token explicitly would disable its automatic refresh.
